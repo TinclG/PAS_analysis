@@ -1,0 +1,475 @@
+---
+title: "DESeq_analysis"
+output: pdf_document
+autor: Tina Gorsek 
+---
+
+```{r library, echo=F, eval=FALSE}
+library("pasilla")
+library("DESeq2")
+library("tidyverse")
+library(IHW)
+```
+
+```{r}
+pasCts <- system.file("extdata",
+                      "pasilla_gene_counts.tsv",
+                      package="pasilla", mustWork=TRUE)
+pasAnno <- system.file("extdata",
+                       "pasilla_sample_annotation.csv",
+                       package="pasilla", mustWork=TRUE)
+cts <- as.matrix(read.csv(pasCts,sep="\t",row.names="gene_id"))
+coldata <- read.csv(pasAnno, row.names=1)
+
+coldata <- coldata[,c("condition","type")]
+rownames(coldata) <- sub("fb", "", rownames(coldata))
+cts <- cts[, rownames(coldata)]
+#https://tmogrady.github.io/bioconductor-2018-01-29-maxplanck/02-DESeq2/index.html
+```
+
+```{r import}
+
+
+PAS<-read.table("PAS_counts.tsv", sep="", header = T)
+
+PASbackup<-PAS
+anno<-read.csv("metadata_PASeq.csv",
+                  sep= ";")
+
+anno<-anno[, c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight")]
+rownames(anno)<-anno$seq_ID
+
+PAS<-PAS[,-1]
+names<-make.unique(PAS$gene_name) #making the column name gene_names as rown names
+rownames(PAS)<-names
+PAS<-PAS[,-1]
+
+# rounding up the PAS counts
+PAS<-ceiling(PAS[,])
+```
+
+```{r}
+dds<-DESeqDataSetFromMatrix(countData = PAS,
+                            colData=anno,
+                            design = ~ place)
+ncol(PAS)
+nrow(anno)
+dds
+```
+
+```{r}
+#pre filtering
+keep<-rowSums(counts(dds)) >=10
+dds<-dds[keep,]
+```
+
+```{r}
+#factor levels
+
+dds$place<-factor(dds$place, levels= c("control", "control_mus", "PAS"))
+#relevel(dds$place, ref="control")
+
+```
+
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+res
+#export this as dataframe 
+results<- as.data.frame(res)
+results<-results[order(results$padj),]
+sig.res<-results|>  #just the sign
+  subset(padj<0.05)
+#write.csv(sig.res, "DEG.csv" )
+
+#getting the ENS in
+
+ENS<- merge(as.data.frame(sig.res), PASbackup, by.y="gene_name", by.x= "row.names")
+#function: leftjoint 
+```
+
+```{r}
+res<-results(dds, name="place_PAS_vs_control")
+res<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "control"))
+```
+
+```{r}
+#logfold shrinkage
+
+resultsNames(dds)
+
+resLFC<-lfcShrink(dds, coef = "place_PAS_vs_control", type="apeglm")
+#you need to cite this
+resLFC
+```
+
+```{r}
+resOrdered <- res[order(res$pvalue),]
+summary(res)
+sum(res$padj < 0.1, na.rm=TRUE)
+res05 <- results(dds, alpha=0.05)
+summary(res05)
+sum(res05$padj < 0.05, na.rm=TRUE)
+
+```
+## MA plot
+```{r}
+#Exploring results
+plotMA(res, ylim=c(-2,2))
+plotMA(resLFC, ylim=c(-2,2)) # it throws out the noise associated with log2FC?
+```
+
+
+```{r}
+# interactivr detection of row number of infivifual genes #doesnt work
+
+idx<-identify(res$baseMean, res$log2FoldChange)
+idx <- identify(res$baseMean, res$log2FoldChange)
+
+rownames(res)[idx]
+
+```
+
+## Shrinkage Estimator -----------------------------------------
+Ranking for genes by effect size.
+- different methods (apeglm, ashr, normal)
+-contrast the ranking by effect size with ranking by p or adj_p--> higher sample number- decrease in associated pvalue for a gene that is differential expressed- but the estimated effect size of LFC becomes more precise
+A gene can have small p-val although the change in expression is not great, as long as the standard error associated with the estimated LFC in small 
+apeglm & ashr methods- preserve the size of large LFC, whiile not over shrinking them, important for the designs with interaction terms
+
+s-value quantity that fives estimated rate of false sign among genes with equal or smaller s.val
+
+normal & ashr usef with arbitrary specified contrast
+
+```{r}
+resultsNames(dds)
+# because we are interested in treated vs untreated, we set 'coef=2'
+resNorm <- lfcShrink(dds, coef=2, type="normal")
+resAsh <- lfcShrink(dds, coef=2, type="ashr")
+
+par(mfrow=c(1,3), mar=c(4,4,2,1))
+xlim <- c(1,1e5); ylim <- c(-3,3)
+plotMA(resLFC, xlim=xlim, ylim=ylim, main="apeglm")
+plotMA(resNorm, xlim=xlim, ylim=ylim, main="normal")
+plotMA(resAsh, xlim=xlim, ylim=ylim, main="ashr")
+#ihw package for the shinkage; check what it does
+
+```
+##Plot counts 
+```{r}
+#plot counts for a single gene across the froups
+plotCounts(dds, gene=which.min(res$padj), intgroup="place")
+```
+
+```{r}
+mcols(res)$description
+```
+
+#data transformation and visualisation
+
+- to test for dif. expression-> raw counts; but for downstream analysis we need transformed count data
+Maybe the most obvious choice of transformation is the logarithm. Since count values for a gene can be zero in some conditions (and non-zero in others), some advocate the use of pseudocounts, 
+
+1) concept of variance stabilising transformations (VST)
+2) regulised logarithm (rlog)- incorporates a prior on the sample differences--> The function rlog, stands for regularized log, transforming the original count data to the log2 scale by fitting a model with a term for each sample and a prior distribution on the coefficients which is estimated from the data. 
+
+both produce transformed data on the log2 scale which has been normalised with respect to library size or other mnormalization factors
+!F: to remove the  dependence og the variance on the mean, particularly high variance og the logarithm of count data, when the mean is low. --> but the genes will still not
+have the same SD, with the same mean, but the experiment- wide trend is flattened. 
+
+''blind'' argument- True--> whether the transformation should be blind to the samole information. It will estumate the dispersion using only intercept 
+!! should not be used if the majority of the genes have larger differences in counts which are explainable by the experimental design
+```{r}
+#normalisarion for the 
+vsd <- vst(dds, blind=FALSE)
+rld <- rlog(dds, blind=FALSE)
+head(assay(rld), 3)
+rld_df<-as.data.frame(assay(rld))
+rld_df<-as.data.frame(rld_df)
+```
+The effect of transformation on the variance-> shifted log elevated SD in the lower count range and the rlog to a lesser extend. While for the variance stabilisad data- the SD
+is roughly constant 
+```{r}
+# this gives log2(n + 1)
+ntd <- normTransform(dds)
+library("vsn")
+meanSdPlot(assay(ntd))# this plot is rather different to the examples
+ 
+
+meanSdPlot(assay(vsd))
+```
+###Heatmap 
+```{r}
+library("pheatmap")
+select <- order(rowMeans(counts(dds,normalized=TRUE)),
+                decreasing=TRUE)[1:20]
+df <- as.data.frame(colData(dds)[,c("place", "seq_ID")])
+pheatmap(assay(ntd)[select,], cluster_rows=TRUE, show_rownames=FALSE,
+         cluster_cols=FALSE, annotation_col=df)
+
+# second way
+rdl_mat<-assay(rld)
+rld_cor<-cor(rdl_mat)
+head(rld_cor)
+head(anno)
+df
+pheatmap(rld_cor, annotation = anno)
+
+
+#heatmap with dif. expressed genes 
+#use sig.res object with genes. 
+
+library("genefilter")
+
+topVarGenes <- head(order(-rowVars(assay(rld))),50)
+
+mat <- assay(rld)[ topVarGenes, ]
+mat <- mat - rowMeans(mat)
+df <- as.data.frame(colData(rld)[,c("place", "patient")])
+pheatmap(mat, annotation_col=df)
+
+# how to delete the first ID row 
+#filter the sig genes- and cluster the expression by the samples
+```
+```{r}
+#heatmap of the sample-to-sample distances
+
+sampleDists <- dist(t(assay(vsd)))
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$place, vsd$seq_ID, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+```
+
+```{r}
+plotPCA(vsd, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2) #500 is default
+```
+#Creating dds2 with just 2 factors for place- control and PAS
+```{r}
+
+
+# rounding up the PAS counts
+PAS2<-PAS
+PAS2<-PAS2%>% 
+  dplyr::select(-c(
+AK19_TG.13,	
+AK19_TG.16, 	
+AK19_TG.19))
+
+anno2<-anno
+anno2<-anno2 %>%
+  filter(place=="control" | place =="PAS")
+dds2<-DESeqDataSetFromMatrix(countData = PAS2,
+                            colData=anno2,
+                            design=~place)
+
+
+dds2 <- DESeq(dds2)
+res2 <- results(dds2)
+res2
+
+
+res2<-results(dds2, name="place_PAS_vs_control")
+res2<-results(dds2, contrast = c("place", "PAS", "control"))
+
+
+
+resultsNames(dds2)
+
+resLFC2<-lfcShrink(dds2, coef = "place_PAS_vs_control", type="apeglm")
+#you need to cite this
+resLFC2
+res2Ordered <- res2[order(res2$pvalue),]
+summary(res2)
+sum(res2$padj < 0.1, na.rm=TRUE)
+res052 <- results(dds2, alpha=0.05)
+summary(res052)
+sum(res052$padj < 0.05, na.rm=TRUE)
+
+
+ntd2 <- normTransform(dds2)
+library("vsn")
+meanSdPlot(assay(ntd2))# this plot is rather different to the examples
+ 
+
+
+vsd2 <- vst(dds2, blind=FALSE)
+plotPCA(vsd2, intgroup="place")+ geom_text(aes(label=name),vjust=2)
+
+```
+
+```{r}
+# vulcanoplot following the flow https://github.com/hbctraining/DGE_workshop_salmon_online/blob/master/lessons/06_DGE_visualizing_results.md
+
+normalized_counts <- counts(dds2, normalized=T) %>% 
+                     data.frame() %>%
+                     rownames_to_column(var="gene") %>%
+                     as_tibble()
+# assigning the genes to the column 
+
+
+summary(res2, alpha = 0.05)
+# creating a tibble from results 
+res3<-res2%>%
+   data.frame() %>% 
+   rownames_to_column(var="gene")%>%
+   as_tibble()
+   View()
+
+
+res3<-res3%>%
+  mutate(threshold_OE = padj < 0.05 & abs(log2FoldChange) >= 0.58)%>%
+  arrange(padj)%>%
+  mutate(genelabels="")
+
+
+ggplot(res3) +
+    geom_point(aes(x = log2FoldChange, y = -log10(padj), colour = threshold_OE)) +
+    ggtitle("PAS") +
+    xlab("log2 fold change") + 
+    ylab("-log10 adjusted p-value") +
+    #scale_y_continuous(limits = c(0,50)) +
+    theme(legend.position = "none",
+          plot.title = element_text(size = rel(1.5), hjust = 0.5),
+          axis.title = element_text(size = rel(1.25)))  
+
+#vulcano plot with names 
+
+res3$genelabels[1:10]<-as.character(res3$gene[1:10])
+view(res3)
+library(ggrepel)
+ggplot(res3, aes(x = log2FoldChange, y = -log10(padj))) +
+    geom_point(aes(colour = threshold_OE)) +
+    geom_text_repel(aes(label = genelabels)) +
+    ggtitle("PAS") +
+    xlab("log2 fold change") + 
+    ylab("-log10 adjusted p-value") +
+    theme(legend.position = "none",
+          plot.title = element_text(size = rel(1.5), hjust = 0.5),
+          axis.title = element_text(size = rel(1.25))) 
+#enhancedvulcano 
+```
+
+To do:
+- find the genes for invasion and show in teh plot
+- align the metadata to the anno 
+- go through TopGO
+- play with GGPLOTs for heatmap- to put the DE genes on. 
+
+export the anno file 
+```{r}
+
+write.csv(anno, "anno.csv")
+```
+
+# Likelihood ratio test 
+```{r}
+dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
+res_LRT <- results(dds_lrt)
+
+# Create a tibble for LRT results
+res_LRT_tb <- res_LRT %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>% 
+  as_tibble()
+
+# Subset to return genes with padj < 0.05
+sigLRT_genes <- res_LRT_tb %>% 
+  filter(padj < 0.05)
+
+# Get number of significant genes
+nrow(sigLRT_genes)
+
+
+```
+
+## identifying clustered gene expressions
+Genes that have particular expression pattern across the sample/condition 
+```{r}
+
+# Subset results for faster cluster finding (for classroom demo purposes)
+clustering_sig_genes <- sigLRT_genes %>%
+  arrange(padj) %>%
+  head(n=1000)
+
+
+# Obtain rlog values for those significant genes
+cluster_rlog <- rdl_mat[clustering_sig_genes$gene, ]
+
+#you have to put the anno in factors
+anno$place<-as.factor(anno$place)
+# determining sets of genes with similar expression patterns across sample groups
+# Use the `degPatterns` function from the 'DEGreport' package to show gene clusters across sample groups
+library(DEGreport)
+clusters <- degPatterns(cluster_rlog, metadata = anno, time = "place", col=NULL ) #??? this doesnt work nicely 
+# What type of data structure is the `clusters` output?
+class(clusters)
+
+# Let's see what is stored in the `df` component
+head(clusters$df)
+
+# Extract the Group 1 genes
+cluster_groups <- clusters$df
+group1 <- clusters$df %>%
+          filter(cluster == 1)
+# Use the data yourself for custom figures
+ ggplot(clusters[["normalized"]],
+        aes(genes, value)) +
+  geom_boxplot() +
+   # change the method to make it smoother
+   geom_smooth(aes(group=place), method = "lm")
+
+```
+
+
+#full model analysis with ~place +GW + sectio+ GDM 
+
+there will be changes in sig. genes 
+OLD STUFF
+
+```{r}
+full_model<-~place+ GWscaled + sectio + GDM
+reduced_model<-~place+ GWscaled
+
+anno$GW<-factor(anno$GW)
+# looking at the effect of GW, sectio and GDM on place
+dds_fm<- DESeqDataSetFromMatrix(countData = PAS2,
+                            colData=anno2,
+                            design = ~ place+ GWscaled )
+
+dds_lrt_fme <- DESeq(dds_fm, test="LRT", reduced = ~ place) ##error
+
+dds_lrt_fm <- DESeq(dds_fm, test="LRT", reduced = ~ 1)
+res_LRT_fm <- results(dds_lrt_fm)
+
+# Create a tibble for LRT results
+res_LRT_tb <- res_LRT_fm %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>% 
+  as_tibble()
+
+# Subset to return genes with padj < 0.05
+sigLRT_genes_fm <- res_LRT_tb %>% 
+  filter(padj < 0.05)
+#
+clustering_sig_genes_fm <- sigLRT_genes_fm %>%
+  arrange(padj) %>%
+  head(n=1000)
+cluster_rlog_fm <- rdl_mat[clustering_sig_genes_fm$gene, ]
+clusters_fm <- degPatterns(cluster_rlog_fm, metadata = anno, time = "place", col=NULL )
+
+
+```
+
+
+
+
+
+
+
+
