@@ -30,7 +30,9 @@ if (!require("BiocManager", quietly = TRUE))
 BiocManager::install("variancePartition")
 library("variancePartition")
 #data used sig.res and anno metadata
+```
 
+```{r}
 #example
 data(varPartData)
 form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)
@@ -44,7 +46,7 @@ plotVarPart(vp)
 dds<-estimateSizeFactors(dds) # tries to get rid of the variations between samples
 expr<- rowSums(fpm(dds)>1) >= 0.5* ncol(dds)
 
-#transformation, plus filtrer for the geens that pass the 0.05
+#transformation, plus filter for the genes that pass the 0.05
 quantlog<-log2(fpm(dds)[expr,] +1)
 
 form <- ~(weight+ Grav + Para + sectio + Csec+ place) #which one is categorical, fixed or continuous
@@ -53,4 +55,16 @@ varPart_pas<- fitExtractVarPartModel(quantlog,form, anno) #problem
 plotVarPart(varPart_pas)
 ?fitExtractVarPartModel
 ```
-sortplot, plotpercentbar plotvarpart
+```{r}
+# plot of varienace fractions for a subset of genes
+plotPercentBars(varPart_pas[1:10,], col = c(ggColorHue(ncol(varPart_pas) - 1), "grey85"))
+
+```
+How to get the genes not the ensemble ID? 
+
+```{r}
+sortCols(varPart_pas)
+plotVarPart( sortCols( varPart_pas ) )
+```
+
+

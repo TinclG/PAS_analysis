@@ -1,0 +1,55 @@
+---
+title: "7.0_visualisation"
+output: pdf_document
+author: Tina Gorsek Sparovec
+date: 24.2.22
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("pasilla")
+library("DESeq2")
+library("tidyverse")
+library(IHW)
+library("pheatmap")
+library("genefilter")
+library("RColorBrewer")
+library("vsn")
+```
+
+```{r normalisation}
+vsd <- vst(dds, blind=FALSE)
+rld <- rlog(dds, blind=FALSE)
+ntd <- normTransform(dds)
+```
+
+```{r}
+sampleDists <- dist(t(assay(vsd)))
+
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$place, vsd$seq_ID, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+```
+
+```{r}
+topVarGenes <- head(order(-rowVars(assay(rld))),50)
+
+mat <- assay(rld)[ topVarGenes, ]
+mat <- mat - rowMeans(mat)
+df <- as.data.frame(colData(rld)[,c("place", "patient")])
+pheatmap(mat, annotation_col=df)
+```
+
+
+
+
+
+

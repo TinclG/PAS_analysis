@@ -72,7 +72,7 @@ saveRDS(PAS, file="PAS.rds")
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData=anno,
-                            design = ~ place)
+                            design = ~ Grav + Para + sectio + Csec + place)
 keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
 saveRDS(dds, file="dds_mixeddesign.rds")
