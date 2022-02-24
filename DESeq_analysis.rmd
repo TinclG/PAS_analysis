@@ -306,14 +306,14 @@ plotPCA(vsd2, intgroup="place")+ geom_text(aes(label=name),vjust=2)
 ```{r}
 # vulcanoplot following the flow https://github.com/hbctraining/DGE_workshop_salmon_online/blob/master/lessons/06_DGE_visualizing_results.md
 
-normalized_counts <- counts(dds2, normalized=T) %>% 
+normalized_counts <- counts(dds, normalized=T) %>% 
                      data.frame() %>%
                      rownames_to_column(var="gene") %>%
                      as_tibble()
 # assigning the genes to the column 
 
 
-summary(res2, alpha = 0.05)
+summary(res, alpha = 0.05)
 # creating a tibble from results 
 res3<-res2%>%
    data.frame() %>% 
