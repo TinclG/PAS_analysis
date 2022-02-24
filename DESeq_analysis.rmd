@@ -5,6 +5,7 @@ autor: Tina Gorsek
 ---
 
 ```{r library, echo=F, eval=FALSE}
+library("here")
 library("pasilla")
 library("DESeq2")
 library("tidyverse")
