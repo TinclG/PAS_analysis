@@ -34,16 +34,32 @@ PAS_results <- function(dds, name, contrast){
 results <- results(dds)
 results <-results(dds, name= name)
 results <-results(dds, filterFun= ihw, contrast = contrast)
-
-return (results)
+results <- as.data.frame(results)
+results <-results[order(results$padj),]
+sig.res<-results|>  #just the sign
+  subset(padj<0.05) 
+return (sig.res)
 }
+
+#objects for the function 
 name= "place_PAS_vs_ctrl"
-name <- list(c("place_PAS_vs_ctrl", "place_mus_vs_ctrl"))
 contrast = c("place", "PAS", "ctrl")
 
+#testing function
 res<-PAS_results(dds, name, contrast)
 
-contrasts<- list("PAS_ctrl"= c("place", "PAS", "ctrl"), "mus_ctrl"= c("place", "mus", "ctrl"))
+#contrasts<- list("PAS_ctrl"= c("place", "PAS", "ctrl"), "mus_ctrl"= c("place", "mus", "ctrl"))
+#create a for loop here!
+```
+```{r}
 
+results_merge<- function(res, PASbackup = PASbackup){
+  results_merged <- merge(as.data.frame(res), PASbackup, by.y="gene_id", by.x= "row.names")
+  
+  return(results_merged)
+}
+
+results_merge(res)
+#resolve the problem
 ```
 
