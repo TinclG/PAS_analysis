@@ -12,3 +12,4 @@ Histology looked PAS to my point of view but this could be a coincidence
 3) visualisation
 
 4) writing functions 
+-organise meeting today
