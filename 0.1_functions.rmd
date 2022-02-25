@@ -7,6 +7,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+source("PAS_design.R")
+```
+
 ```{r PAS_design}
 
 #this function created  an dds object 
@@ -20,6 +24,26 @@ PAS_design<-function(x, PAS, anno){
 
 x <- ~ Grav + Para + sectio + Csec + place
 
-PAS_design( x, PAS, anno )
+dds<-PAS_design( x, PAS, anno )
+```
+
+
+```{r}
+PAS_results <- function(dds, name, contrast){
+    dds <- DESeq(dds)
+results <- results(dds)
+results <-results(dds, name= name)
+results <-results(dds, filterFun= ihw, contrast = contrast)
+
+return (results)
+}
+name= "place_PAS_vs_ctrl"
+name <- list(c("place_PAS_vs_ctrl", "place_mus_vs_ctrl"))
+contrast = c("place", "PAS", "ctrl")
+
+res<-PAS_results(dds, name, contrast)
+
+contrasts<- list("PAS_ctrl"= c("place", "PAS", "ctrl"), "mus_ctrl"= c("place", "mus", "ctrl"))
+
 ```
 
