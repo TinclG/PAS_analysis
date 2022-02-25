@@ -1,0 +1,25 @@
+---
+title: "0.1_functions"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r PAS_design}
+
+#this function created  an dds object 
+PAS_design<-function(x, PAS, anno){
+  dds<-DESeqDataSetFromMatrix(countData = PAS, 
+                              colData = anno, 
+                              design = x)
+  keep<-rowSums(counts(dds)) >=10
+  dds<-dds[keep,]
+}
+
+x <- ~ Grav + Para + sectio + Csec + place
+
+PAS_design( x, PAS, anno )
+```
+
