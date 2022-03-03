@@ -1,0 +1,375 @@
+---
+title: "Gene_anno"
+output: pdf_document
+author: Tina Gorsek Sparovec
+date: 26.1.22
+---
+
+```{r}
+
+ if (!requireNamespace("BiocManager", quietly=TRUE))
+     install.packages("BiocManager")
+ BiocManager::install()
+if (!requireNamespace("BiocManager", quietly=TRUE))
+install.packages("BiocManager")
+BiocManager::install("topGO")
+library(tidyverse)
+```
+ 
+ 
+ 
+ 
+```{r, eval=FALSE}
+#package PcaExplorer topGOtable
+#clusterexplorer
+#ReactomePA
+library(topGO)
+library(ALL)
+library(pcaExplorer)
+data(ALL)
+data(geneList)
+BiocManager::install("hgu95av2.db")
+ affyLib <- paste(annotation(ALL), "db", sep = ".")
+ library(package = affyLib, character.only = TRUE)
+ 
+```
+```{r, eval=F}
+sum(topDiffGenes(geneList))
+head(topDiffGenes(geneList))
+ sampleGOdata <- new("topGOdata",
+                     description = "Simple session", ontology = "BP",
+                     allGenes = geneList, geneSel = topDiffGenes,
+                     nodeSize = 10,
+                     annot = annFUN.db, affyLib = affyLib)
+
+```
+```{r puting the genes as named vector}
+require(topGO)
+require(org.Hs.eg.db)
+library(janitor)
+genes<-sig.res
+
+head(genes)
+
+genes<-genes%>%
+   data.frame() %>% 
+   rownames_to_column(var="gene")%>%
+   as_tibble()
+genes<- genes %>%
+  dplyr::select(c(gene, padj)) #selecting the columns gene and padj
+  
+all_genes_names <- genes$gene
+
+
+# changing into the tibble with gene as rownames 
+rownames(genes) <- genes$gene 
+genes<-genes %>%  
+  remove_rownames() %>% 
+  column_to_rownames(var = "gene")
+
+
+#converting into dataframe 
+genes<- as.data.frame(genes)
+
+#skip thisgenes<-t(genes)
+
+#get a facttor with 2 levels--> named nummeric vector
+
+
+GeneList <- genes$padj #this is not correct 
+GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
+names (GeneList) <- all_genes_names #naming the vector 
+head(GeneList)
+#https://www.biostars.org/p/2063/ 
+#https://www.biostars.org/p/350710/ 
+
+
+
+selection <- function(allScore){ return(allScore < 0.05)} # function that returns TRUE/FALSE for p-values<0.05
+allGO2genes <- annFUN.org(whichOnto="BP", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
+GOdata <- new("topGOdata",
+  ontology="BP",  # you can change this to #NF #CP
+  allGenes=GeneList,
+  annot=annFUN.GO2genes,
+  GO2genes=allGO2genes,
+  geneSel=selection,
+  nodeSize=10) #creating the GOdata object which is then used for the GO analysis
+
+```
+
+##topGOtable
+? what are the inputs I need to use? 
+```{r}
+#topGOtable with pcaExplorer ##NOT WORKING 
+res$symbol <- mapIds(org.Hs.eg.db,
+                            keys=row.names(res),
+                            column="SYMBOL",
+                            keytype="ENSEMBL",
+                            multiVals="first") # P- getting symbols in 
+res$entrez <- mapIds(org.Hs.eg.db,
+                            keys=row.names(res),
+                            column="ENTREZID",
+                            keytype="ENSEMBL",
+                            multiVals="first")
+resOrdered <- as.data.frame(res[order(res$padj),])
+head(resOrdered)
+# extract DE genes
+de_df <- resOrdered[resOrdered$padj < .05 & !is.na(resOrdered$padj),]
+de_symbols <- de_df$symbol
+#getting BG genes
+bg_ids <- rownames(dds)[rowSums(counts(dds)) > 0]
+bg_symbols <- mapIds(org.Hs.eg.db,
+                     keys=bg_ids,
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+GOdata_2<-topGOtable(GOdata, bg_symbols,
+                            ontology="BP", 
+                            mapping = "org.Hs.eg.db",
+                            geneID = "symbol") ##??? allgenes must be a factor with two levels
+  
+
+```
+ 
+##Performing an enrichment with Fisher's exact test 
+ You can actually use 2 different (F. exact test or Kolmogorov- Smirtnov test with computes enrichmet
+ based on the gene count)
+ 
+```{r}
+#performing an enrichment 
+
+resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+resultFisher
+```
+ testing the enrichment using KS test, with classic and elim method
+ 
+```{r}
+resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks")
+resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks")
+```
+
+## Analysis of results
+analysis of most sig. GO terms and coresponding p-val
+GenTable() returns a df containing topnodes GO term, for assessing the GO's term pval- score()
+
+```{r}
+
+allRes <- GenTable(GOdata, classicFisher = resultFisher,
+                    classicKS = resultKS, elimKS = resultKS.elim, #with elim method 
+                    orderBy = "elimKS", ranksOf = "classicFisher", topNodes = 50) # go for all of them and select what you want 
+allRes #depends on the threshold that you use
+
+ pValue.classic <- score(resultKS)
+ pValue.elim <- score(resultKS.elim)[names(pValue.classic)]
+ gstat <- termStat(GOdata, names(pValue.classic))
+ gSize <- gstat$Annotated / max(gstat$Annotated) * 4
+ colMap <- function(x) {
+  .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
+  return(.col[match(1:length(x), order(x))])
+}
+ gCol <- colMap(gstat$Significant)
+ GOplot<-plot(pValue.classic, pValue.elim, xlab = "p-value classic", ylab = "p-value elim",
+      pch = 19, cex = gSize, col = gCol)
+ write.csv(allRes, "GOterms.csv")
+```
+references for comparison: https://www.frontiersin.org/articles/10.3389/fgene.2020.551495/full 
+
+```{r visualisation of GO}
+#doesnt work
+require(ggplot2)
+library(scales)
+
+goEnrichment$classicFisher<-as.numeric(goEnrichment$Fisher)
+ntop <- 30
+ggdata <- goEnrichment[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+gg1 <- ggplot(ggdata,
+  aes(x = Term, y = -log10(Fisher), size = -log10(Fisher), fill = -log10(Fisher))) +
+
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = 'royalblue', high = 'red4') +
+
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO Biological processes',
+    subtitle = 'Top 30 terms ordered by Kolmogorov-Smirnov p-value',
+    caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+
+  coord_flip()
+```
+
+
+```{r}
+sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
+ cbind(termStat(GOdata, sel.go),
+       elim = pValue.elim[sel.go],
+       classic = pValue.classic[sel.go])
+ pdf("plotGO.pdf")
+ showSigOfNodes(GOdata, score(resultKS.elim), firstSigNodes = 5, useInfo = 'all')
+ dev.off()
+```
+
+# Annotation 
+nr. 5) in the vignete
+```{r}
+BPterms <- ls(GOBPTerm)
+head(BPterms)
+
+```
+
+```{r working with TopGodData}
+ a <- genes(GOdata) ## obtain the list of genes
+ head(a)
+ numGenes(GOdata)
+ 
+ # retrieving a score of specified set of genes
+selGenes <- sample(a, 10)
+ gs <- geneScore(GOdata, whichGenes = selGenes)
+ print(gs)
+ 
+ # unnamed vector or the scrore of all genes
+ gs<-geneScore(GOdata, whichGenes = selGenes, use.names=F)
+ print(gs)
+ gs <- geneScore(GOdata, use.names = FALSE)
+ str(gs)
+
+#list of sig. genes
+ sg <- sigGenes(GOdata)
+str(sg)
+numSigGenes(GOdata)
+
+# updating the genes 
+.geneList <- geneScore(GOdata, use.names = TRUE)
+ GOdata ## more available genes
+ GOdata <- updateGenes(GOdata, .geneList, topDiffGenes)
+ GOdata ## the available genes are now the feasible genes
+ graph(GOdata)                                              # ???is this number of nods7edges enough????
+```
+
+
+```{r}
+ug <- usedGO(GOdata)
+ head(ug)
+ 
+ sel.terms <- sample(usedGO(GOdata), 10) #selecting 10 random GO terms to get the genes 
+num.ann.genes <- countGenesInTerm(GOdata, sel.terms) ## the number of annotated genes > num.ann.genes
+ ann.genes <- genesInTerm(GOdata, sel.terms) ## get the annotations
+ head(ann.genes)
+ 
+ #sel.term missing== you get all the GO terms
+ ann.score <- scoresInTerm(GOdata, sel.terms)
+ head(ann.score)
+ ann.score <- scoresInTerm(GOdata, sel.terms, use.names = TRUE)
+ head(ann.score)
+ termStat(GOdata, sel.terms)
+```
+´
+
+
+```{r}
+#reactomePA
+library(ReactomePA)
+R_PA<-enrichPathway(
+names(GeneList),
+organism = "human"
+) #returns errors 
+```
+
+
+To do:
+
+We cont with likelihood ratio test, ~ for the model use also other factors that influence- you need even number of comparison (6=6)
+variance partition package https://rdrr.io/bioc/variancePartition/f/inst/doc/variancePartition.pdf 
+
+doing heatmap using the genes (done)
+
+age clust by similarity
+
+- topGOtable
+- pathways and functions - make a table 
+
+
+#topgotable
+```{r}
+#using res, anno, PAS 
+dds_GO <- DESeq(dds)
+res<- results(dds_GO)
+ENS_res<- merge(as.data.frame(res), PASbackup, by.y="gene_name", by.x= "row.names")
+ENS_res$gene_id<-gsub("\\..*","",ENS_res$gene_id)
+genenames_GO<-mapIds(org.Hs.eg.db,
+                     keys=ENS_res$gene_id, 
+                     column = "SYMBOL",
+                     keytype = "ENSEMBL")
+annotation_GO <- data.frame(gene_name = genenames_GO, #some duplication 
+                                row.names = rownames(ENS_res),
+                                stringsAsFactors = FALSE)
+head(annotation_GO)  
+
+anno_df_orgdb <- get_annotation_orgdb(dds = dds_GO,
+                                      orgdb_species = "org.Hs.eg.db",
+                                      idtype = "ENSEMBL")
+
+anno_df_biomart <- get_annotation(dds = dds,
+                                  biomart_dataset = "hsapiens_gene_ensembl",
+                                  idtype = "ensembl_gene_id")
+
+
+res$symbol<- mapIds(org.Hs.eg.db,
+                            keys= row.names(res),
+                            column="SYMBOL",
+                            keytype="ENSEMBL",
+                            multiVals="first")
+res$entrez <- mapIds(org.Hs.eg.db, ##problem 
+                            keys=row.names(res),
+                            column="ENTREZID",
+                            keytype="ENSEMBL",
+                            multiVals="first")
+resOrdered <- as.data.frame(res[order(res$padj),])
+head(resOrdered)
+
+de_df <- resOrdered[resOrdered$padj < .05 & !is.na(resOrdered$padj),]
+de_symbols <- de_df$symbol
+# extract background genes
+bg_ids <- rownames(dds_GO)[rowSums(counts(dds_GO)) > 0]
+bg_symbols <- mapIds(org.Hs.eg.db,
+                     keys=bg_ids,
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+# run the function
+topgoDE_GO <- topGOtable(de_symbols, bg_symbols,
+                             ontology = "BP",
+                             mapping = "org.Hs.eg.db",
+                             geneID = "symbol")
+#error NA in rownames
+```
+
+ 
