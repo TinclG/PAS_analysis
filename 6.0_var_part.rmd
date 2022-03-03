@@ -1,0 +1,70 @@
+---
+title: "Var_part.rmd"
+output: pdf_document
+author: Tina Gorsek Sparovec
+date: february 2022
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Variance partitioning 
+
+framework for understanding drivers of variation
+in gene expression in experiments with complex designs. A
+typical application would consider a dataset of gene expression from individuals
+sampled in multiple tissues or multiple time points where the goal is to understand variation within versus between individuals and tissues. variancePartition
+use a linear mixed model to partition the variance attributable to multiple variables in the data. 
+
+
+Needs normalised expression values
+
+3 components:
+1) gene expression matrix
+2) metadata
+3) model
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("variancePartition")
+library("variancePartition")
+#data used sig.res and anno metadata
+```
+
+```{r}
+#example
+data(varPartData)
+form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)
+varPart<- fitExtractVarPartModel( geneExpr, form, info)
+vp<-sortCols(varPart)
+plotPercentBars(vp[1:10,])
+plotVarPart(vp)
+```
+
+```{r}
+dds<-estimateSizeFactors(dds) # tries to get rid of the variations between samples
+expr<- rowSums(fpm(dds)>1) >= 0.5* ncol(dds)
+
+#transformation, plus filter for the genes that pass the 0.05
+quantlog<-log2(fpm(dds)[expr,] +1)
+
+form <- ~(weight+ Grav + Para + sectio + Csec+ place) #which one is categorical, fixed or continuous
+#uses rld table results for input
+varPart_pas<- fitExtractVarPartModel(quantlog,form, anno) #problem
+plotVarPart(varPart_pas)
+?fitExtractVarPartModel
+```
+```{r}
+# plot of varienace fractions for a subset of genes
+plotPercentBars(varPart_pas[1:10,], col = c(ggColorHue(ncol(varPart_pas) - 1), "grey85"))
+
+```
+How to get the genes not the ensemble ID? 
+
+```{r}
+sortCols(varPart_pas)
+plotVarPart( sortCols( varPart_pas ) )
+```
+
+
