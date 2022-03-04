@@ -9,6 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 source("PAS_design.R")
+source("PAS_results.R")
+source("results_merged.R")
 ```
 
 ```{r PAS_design}
@@ -46,6 +48,8 @@ contrast = c("place", "PAS", "ctrl")
 
 #testing function
 res<-PAS_results(dds, name, contrast)
+
+#creating a for loop 
 PAS_ctrl<-c("place", "PAS", "ctrl")
 mus_ctrl<- c("place", "mus", "ctrl")
 contrast<- list(PAS_ctrl, mus_ctrl)
@@ -58,9 +62,6 @@ for (i in 1:length(contrast)) {
   
 } 
 str(res)
-
-
-
 ```
 
 
@@ -68,13 +69,69 @@ str(res)
 # merging the results with the gene_id
 results_merge<- function(res, PASbackup = PASbackup){
   results_merged<- list()
+  
   for (i in 1:length(res)) {
-  results_merged[[i]] <- merge(as.data.frame(res[[i]]), PASbackup, by.y="gene_id", by.x= "row.names")
+  results_merged[[i]] <- merge(as.data.frame(res[[i]]), 
+                               PASbackup, 
+                               by.y="gene_id", 
+                               by.x= "row.names")
  }
   return(results_merged)
 }
 
-results_merge(res, PASbackup = PASbackup)
-#resolve the problem
+ENS<-results_merge(res, PASbackup = PASbackup)
+
+```
+# GO with pcaExplore in function 
+
+```{r}
+# you take the ENS (merged results)
+
+
+for (i in 1:length(ENS)){
+  ENS[[i]]$Row.names<-gsub("\\..*","", ENS[[i]]$Row.names)
+  rownames(ENS[[i]])<-make.names(ENS[[i]]$Row.names, unique=T)
+  return(ENS[[i]])
+}
+
+results<-ENS[[1]]
+PAS_GOexplore<-function(results, dds) {
+    genenames_GO<-mapIds(org.Hs.eg.db,
+                     keys=results$Row.names, 
+                     column = "SYMBOL",
+                     keytype = "ENSEMBL")
+     annotation_GO <- data.frame(gene_name = genenames_GO,  
+                                row.names = row.names(results),
+                                stringsAsFactors = FALSE)
+     
+     res_o <- as.data.frame(results[order(results$padj),])
+     de_df <- res_o[res_o$padj < .05 & !is.na(res_o$padj),]
+     de_symbols <- de_df$symbol
+     bg_ids <- rownames(dds)[rowSums(counts(dds)) > 0]
+     bg_ids <- gsub("\\..*","",bg_ids)
+     bg_symbols <- mapIds(org.Hs.eg.db,
+                     keys=bg_ids,
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+     results$symbol<- mapIds(org.Hs.eg.db,
+                            keys= row.names(results),
+                            column="SYMBOL",
+                            keytype="ENSEMBL",
+                            multiVals="first")
+     results$entrez <- mapIds(org.Hs.eg.db, ##problem 
+                            keys=row.names(results), #these keys are not correct
+                            column="ENTREZID",
+                            keytype="ENSEMBL",
+                            multiVals="first")
+     topgoDE_GO <- topGOtable(de_symbols, bg_symbols,
+                             ontology = "BP",
+                             mapping = "org.Hs.eg.db",
+                             geneID = "symbol")
+     return(topgoDE_GO)
+}
+
+
+PAS_GOexplore(ENS[[1]], dds) #error
 ```
 
