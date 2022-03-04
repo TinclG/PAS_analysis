@@ -65,14 +65,16 @@ str(res)
 
 
 ```{r}
-
+# merging the results with the gene_id
 results_merge<- function(res, PASbackup = PASbackup){
-  results_merged <- merge(as.data.frame(res), PASbackup, by.y="gene_id", by.x= "row.names")
-  
+  results_merged<- list()
+  for (i in 1:length(res)) {
+  results_merged[[i]] <- merge(as.data.frame(res[[i]]), PASbackup, by.y="gene_id", by.x= "row.names")
+ }
   return(results_merged)
 }
 
-results_merge(res)
+results_merge(res, PASbackup = PASbackup)
 #resolve the problem
 ```
 
