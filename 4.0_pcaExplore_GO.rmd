@@ -107,6 +107,7 @@ annotation_GO <- data.frame(gene_name = genenames_GO,
                                 stringsAsFactors = FALSE)
 head(annotation_GO)  
 
+#anno_df is not needed- do not run
 anno_df_orgdb <- get_annotation_orgdb(dds = dds_GO,
                                       orgdb_species = "org.Hs.eg.db",
                                       idtype = "ENSEMBL")
@@ -115,7 +116,7 @@ anno_df_biomart <- get_annotation(dds = dds_GO,
                                   biomart_dataset = "hsapiens_gene_ensembl",
                                   idtype = "ensembl_gene_id")
 
-intersect(rownames(res),keys(org.Hs.eg.db,"ENSEMBL")) # not all keys are in the rownames
+intersect(rownames(res), keys(org.Hs.eg.db,"ENSEMBL")) # not all keys are in the rownames
 
 
 res$symbol<- mapIds(org.Hs.eg.db,
