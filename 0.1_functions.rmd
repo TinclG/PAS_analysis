@@ -31,8 +31,7 @@ dds<-PAS_design( x, PAS, anno )
 ```{r}
 PAS_results <- function(dds, name, contrast){
     dds <- DESeq(dds)
-results <- results(dds)
-results <- results(dds, name= name)
+results <- results(dds, name = name)
 results <- results(dds, filterFun= ihw, contrast = contrast)
 results <- as.data.frame(results)
 results <- results[order(results$padj),]
@@ -49,20 +48,19 @@ contrast = c("place", "PAS", "ctrl")
 res<-PAS_results(dds, name, contrast)
 PAS_ctrl<-c("place", "PAS", "ctrl")
 mus_ctrl<- c("place", "mus", "ctrl")
-contrast<- c(PAS_ctrl, mus_ctrl)
+contrast<- list(PAS_ctrl, mus_ctrl)
 
-
-#create a for loop here!- the loop did not work 
+# a for loop to loop ovef the list of contrast
 
 res<-list()
 for (i in 1:length(contrast)) {
-  res[i]<- PAS_results(dds, name, contrast[i])
+  res[[i]]<- PAS_results(dds, name, contrast[[i]])
   
 } 
 str(res)
 
-res<- PAS_results(dds, name, contrast)
-#finish this
+
+
 ```
 
 
