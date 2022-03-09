@@ -1,7 +1,13 @@
+data/
+results
 anno.rds
 dds_mixeddesign.rds
 PAS.rds
 
 commit_message.txt
 
+*.nb.html
+*.Rhistory
 .Rproj.user
+*.Rproj
+

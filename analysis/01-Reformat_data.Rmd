@@ -1,0 +1,63 @@
+---
+title: "01-Reformat_data"
+author: "Valentin Marteau"
+params:
+  data: "../data"
+  results:  "../results"
+  lib:  "../lib"
+  maxcores: 6
+output:
+  html_notebook:
+    theme: spacelab
+    highlight: textmate
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r, results = "hide"}
+# Load required packages
+library(tidyverse)
+```
+
+# Reformat and check data and metadata
+```{r}
+# Read raw data into memory
+raw_data <- read_tsv(file = file.path(params$data, "salmon.merged.gene_counts.tsv"))
+metadata <- read_csv2(file = file.path(params$data, "metadata.csv"))
+
+# Check metadata, convert to factors (but keep covariates as numerical) and abbreviate labels
+metadata  <- metadata |> mutate_at(vars(-c("seq_ID", "week", "day", "GW", "weight")), factor)
+metadata$place <- recode_factor(metadata$place, "control" = "Ctrl", "control_mus" = "CtrlMus")
+
+# Correct typo (upper/lower case "Sectio")
+metadata$sectio <- recode_factor(metadata$sectio, "Prim. Sectio" = "Prim", "Sek. Sectio" = "Sek", "Prim. sectio" = "Prim")
+
+# Simplify sample names for both data and metadata (need to be equal!)
+remove <- c("AK19_", "[[:punct:]]")
+metadata$sample <- metadata$seq_ID |> str_remove_all(paste(remove, collapse = "|"))
+metadata <- column_to_rownames(metadata, "sample")
+
+# Remove ENSG version from gene id
+remove_ensg_version <- function(x) gsub("\\.[0-9]*$", "", x)
+raw_data$gene_id <- remove_ensg_version(raw_data$gene_id)
+
+# Generate count matrix
+count_mat <- as.matrix(ceiling(raw_data[, 3:23]))
+rownames(count_mat) <- raw_data$gene_id
+colnames(count_mat) <- rownames(metadata)
+
+# Reorder Samples in ascending order
+ord <- order(as.numeric(str_remove_all(rownames(metadata), "TG")))
+count_mat <- count_mat[, ord]
+metadata <- metadata[ord, ]
+
+# Store conversion key ensg to symbol
+key <- raw_data[, 1:2]
+
+
+saveRDS(count_mat, file.path(params$results, "produced_data/01-PAS_count_mat"))
+saveRDS(metadata, file.path(params$results, "produced_data/01-PAS_metadata"))
+saveRDS(key, file.path(params$results, "produced_data/01-PAS_key"))
+```
