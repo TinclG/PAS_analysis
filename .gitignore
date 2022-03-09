@@ -6,6 +6,7 @@ PAS.rds
 
 commit_message.txt
 
+*.nb.html
 *.Rhistory
 .Rproj.user
 *.Rproj
