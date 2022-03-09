@@ -1,0 +1,59 @@
+---
+title: "02-DESeq2"
+author: "Valentin Marteau"
+params:
+  data: "../data"
+  results:  "../results"
+  lib:  "../lib"
+  maxcores: 6
+output:
+  html_notebook:
+    theme: spacelab
+    highlight: textmate
+    toc: yes
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+---
+# Differential gene expression using DESeq2
+```{r, results = "hide"}
+# Load required packages
+library(tidyverse)
+library(DESeq2)
+library(IHW)
+
+# load custom functions
+source(file.path(params$lib, "run_DESeq2.R"))
+```
+
+```{r}
+# Load reformatted data into memory
+count_mat <- readRDS(file.path(params$results, "produced_data/01-PAS_count_mat"))
+metadata <- readRDS(file.path(params$results, "produced_data/01-PAS_metadata"))
+key <- readRDS(file.path(params$results, "produced_data/01-PAS_key"))
+```
+
+```{r}
+# Use summary function to quickly spot factor levels + if any needs to be releveled (e.g. if "Ctrl" is not the reference/first level)
+#summary(metadata)
+#metadata$place <- relevel(metadata$place, ref = "Ctrl")
+
+# Add modified covariats to metadata
+metadata$ScaledGW <- scale(metadata$GW, center = TRUE)
+metadata$ScaledWeight <- scale(metadata$weight, center = TRUE)
+
+# Transform continuous covariates into factors by cutting them (Ideally factor levels should make sense biologically!")
+metadata$cutGW <- cut(metadata$GW, c(0, 243, 269, Inf), c("<243", "244-269", ">269"), include.lowest = TRUE)
+metadata$cutWeight <- cut(metadata$weight, c(0, 2000, 3201, Inf), c("<2000", "2001-3201", ">3201"), include.lowest = TRUE)
+```
+
+```{r}
+# list models for DESeq2
+model <- c(~ place, ~ ScaledWeight + ScaledGW + sectio + GDM + Grav + Para + place)
+
+contrast <- c("place", "Ctrl", "PAS")
+
+res <- run_DESeq2(count_mat, metadata, model, contrast, key)
+
+saveRDS(res, file.path(params$results, "produced_data/02-DESeq2_res"))
+```
