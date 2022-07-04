@@ -1,0 +1,65 @@
+---
+title: "0.1_functions"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("PAS_design.R")
+```
+
+```{r PAS_design}
+
+#this function created  an dds object 
+PAS_design<-function(x, PAS, anno){
+  dds<-DESeqDataSetFromMatrix(countData = PAS, 
+                              colData = anno, 
+                              design = x)
+  keep<-rowSums(counts(dds)) >=10
+  dds<-dds[keep,]
+}
+
+x <- ~ Grav + Para + sectio + Csec + place
+
+dds<-PAS_design( x, PAS, anno )
+```
+
+
+```{r}
+PAS_results <- function(dds, name, contrast){
+    dds <- DESeq(dds)
+results <- results(dds)
+results <-results(dds, name= name)
+results <-results(dds, filterFun= ihw, contrast = contrast)
+results <- as.data.frame(results)
+results <-results[order(results$padj),]
+sig.res<-results|>  #just the sign
+  subset(padj<0.05) 
+return (sig.res)
+}
+
+#objects for the function 
+name= "place_PAS_vs_ctrl"
+contrast = c("place", "PAS", "ctrl")
+
+#testing function
+res<-PAS_results(dds, name, contrast)
+
+#contrasts<- list("PAS_ctrl"= c("place", "PAS", "ctrl"), "mus_ctrl"= c("place", "mus", "ctrl"))
+#create a for loop here!
+```
+```{r}
+
+results_merge<- function(res, PASbackup = PASbackup){
+  results_merged <- merge(as.data.frame(res), PASbackup, by.y="gene_id", by.x= "row.names")
+  
+  return(results_merged)
+}
+
+results_merge(res)
+#resolve the problem
+```
+

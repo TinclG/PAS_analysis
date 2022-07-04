@@ -1,0 +1,17 @@
+---
+title: "Goterms"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("topGO")
+library(pcaExplorer)
+library(clusterProfiler)
+library(DESeq2)
+library(ReactomePA)
+```
+
