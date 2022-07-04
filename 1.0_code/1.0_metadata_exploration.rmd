@@ -24,7 +24,6 @@ library(ReactomePA)
 
 ```
 
-
 ```{r}
 
 path2data<- ("~/Library/Mobile Documents/com~apple~CloudDocs/PhD/RNAseqPAS/raw_data")
@@ -82,6 +81,7 @@ saveRDS(PAS, file="PAS.rds")
 ```
 
 ## Deseq and DE analysis
+
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData=anno,
@@ -91,8 +91,10 @@ dds<-dds[keep,]
 saveRDS(dds, file="dds_mixeddesign.rds")
 ```
 
-# running the analysis  
-## PAS vs ctrl 
+# running the analysis
+
+## PAS vs ctrl
+
 ```{r}
 
 dds$place<-factor(dds$place, levels= c("ctrl", "mus", "PAS"))
@@ -108,7 +110,9 @@ sig.res<-results_PAS_ctrl|>  #just the sign
 
 
 ```
+
 ## mus vs. ctrl
+
 ```{r}
 
 results_mus_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "mus", "ctrl"))
@@ -118,6 +122,7 @@ results_mus_ctrl<- results_mus_ctrl %>%
 ```
 
 ## pas vs mus
+
 ```{r}
 results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "mus", "PAS"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
@@ -131,6 +136,7 @@ ENS_bg<-merge(as.data.frame(results_mus_ctrl), PASbackup, by.y="gene_id", by.x= 
 ```
 
 # normalisation
+
 ```{r}
 vsd <- vst(dds, blind=FALSE)
 rld <- rlog(dds, blind=FALSE)
@@ -141,6 +147,7 @@ rld_df<-as.matrix(assay(rld))
 ```
 
 # likelihood test ratio
+
 ```{r}
 dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
 res_LRT <- results(dds_lrt)
@@ -160,7 +167,8 @@ nrow(sigLRT_genes)
 
 ```
 
-#clustering the genes 
+#clustering the genes
+
 ```{r}
  #Subset results for faster cluster finding (for classroom demo purposes)
 clustering_sig_genes <- sigLRT_genes %>%
@@ -181,12 +189,10 @@ clusters <- degPatterns(cluster_rlog, metadata = anno, time = "place", col=NULL 
 #??? put the gene names in the df
 head(clusters$df)
 ```
+
 ```{r}
 plotPCA(vsd, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
 #color on 2 levels place and PAscore
 ```
-https://bioconductor.org/packages/release/bioc/manuals/ReactomePA/man/ReactomePA.pdf
-## ReactomePA
 
-
-
+<https://bioconductor.org/packages/release/bioc/manuals/ReactomePA/man/ReactomePA.pdf> \## ReactomePA
