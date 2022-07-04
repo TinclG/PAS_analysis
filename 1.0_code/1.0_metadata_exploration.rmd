@@ -24,10 +24,16 @@ library(ReactomePA)
 
 ```
 
+
+```{r}
+
+path2data<- ("~/Library/Mobile Documents/com~apple~CloudDocs/PhD/RNAseqPAS/raw_data")
+```
+
 ##Sorting the metadata
 
 ```{r}
-  anno<-read.csv("~/PASproject/metadata_PASeq.csv", 
+  anno<-read.csv(paste0(path2data, "/metadata_PASeq.csv"),
                   sep= ";")
 
 anno<-anno[, c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")]
