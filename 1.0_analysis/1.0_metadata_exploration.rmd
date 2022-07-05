@@ -21,6 +21,9 @@ toc_float: true
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Workflow sources: 
+[Analyzing RNA-seq data with DESeq2](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#countmat)
+
 ```{r}
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
@@ -40,30 +43,32 @@ library(ReactomePA)
 
 ```{r}
 
-path2data<- ("~/Library/Mobile Documents/com~apple~CloudDocs/PhD/RNAseqPAS/raw_data")
+path2data<-("~/PAS_analysis/4.0_data")
+
 ```
 
 ##Sorting the metadata
 
 ```{r}
-  anno<-read.csv(paste0(path2data, "/metadata_PASeq.csv"),
+anno<-read.csv(paste0(path2data,"/metadata_PASeq.csv"),
                   sep= ";")
 
 anno<-anno[, c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")]
 rownames(anno)<-anno$seq_ID
 head(anno)
 
+#listing the variables as factors
 anno$place<-as.factor(anno$place)
 nameplace<-c(control= "ctrl", control_mus= "mus", PAS= "PAS" )
 anno$place<- as.character(nameplace[anno$place])
 anno$place<-as.factor(anno$place)
-
 anno$seq_ID<-substr(anno$seq_ID, 6,10)
 anno$seq_ID<-as.factor(anno$seq_ID)
 anno$GDM<-as.factor(anno$GDM)
 anno$Grav<-as.factor(anno$Grav)
 anno$Para<-as.factor(anno$Para)
 
+#renaming the variable sectio 
 namesec<- c("Prim. Sectio"= "1sec", "Prim. sectio"= "1sec", "Sek. Sectio"= "2sec")
 anno$sectio<- as.character(namesec[anno$sectio])
 anno$sectio<-as.factor(anno$sectio)
@@ -77,8 +82,12 @@ anno$Csec<-as.factor(anno$Csec)
 anno$PA_score<-as.factor(anno$PA_score)
 anno$Placenta_previa<-as.factor(anno$Placenta_previa)
 
-saveRDS(anno, file= "anno.rds")
+#saveRDS(anno, file= "anno.rds")
+```
 
+## Reading in the count table 
+
+```{r}
 PAS<-read.table(paste0(path2data, "/PAS_counts.tsv"), sep="", header = T)
 
 
@@ -91,23 +100,28 @@ PAS<-PAS[,-1]
 # rounding up the PAS counts
 PAS<-ceiling(PAS[,])
 
-saveRDS(PAS, file="PAS.rds")
+#saveRDS(PAS, file="PAS.rds")
 ```
 
 ## Deseq and DE analysis
+
+In the design we included Grav, Para, sectio, Csec and place
 
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData=anno,
                             design = ~ Grav + Para + sectio + Csec + place)
+#prefiltering- removing rows with few reads
 keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
-saveRDS(dds, file="dds_mixeddesign.rds")
+#saveRDS(dds, file="dds_mixeddesign.rds")
 ```
 
-# running the analysis
+# running the Differential expression analysis
 
 ## PAS vs ctrl
+
+note! for levels, the R will choose based on alphabetical order! careful 
 
 ```{r}
 
@@ -119,7 +133,7 @@ results_PAS_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "ctr
 
 results_PAS_ctrl<- as.data.frame(results_PAS_ctrl)
 results_PAS_ctrl<-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
-sig.res<-results_PAS_ctrl|>  #just the sign
+sig.res<-results_PAS_ctrl|>  # using just the signif DEG
   subset(padj<0.05) 
 
 
@@ -144,12 +158,16 @@ results_mus_PAS<- results_mus_PAS %>%
   subset(padj<0.05)
 ```
 
+
+
 ```{r}
+#merging thedf into ENS_sig (between PAS and ctrl)
 ENS_sig<- merge(as.data.frame(sig.res), PASbackup, by.y="gene_id", by.x= "row.names")
+
 ENS_bg<-merge(as.data.frame(results_mus_ctrl), PASbackup, by.y="gene_id", by.x= "row.names")
 ```
 
-# normalisation
+### normalisation
 
 ```{r}
 vsd <- vst(dds, blind=FALSE)
@@ -160,7 +178,7 @@ rld_df<-as.matrix(assay(rld))
 
 ```
 
-# likelihood test ratio
+### likelihood test ratio
 
 ```{r}
 dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
