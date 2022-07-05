@@ -1,6 +1,20 @@
 ---
 title: "Exploration_data"
-output: html_document
+author: "Tina Gorsek Sparovec"
+
+params:
+data: "../4.0_data"
+results: "../2.0_results"
+lib: "../0.0_lib"
+maxcores: 6
+output:
+html_notebook:
+theme: spacelab
+highlight: textmate
+toc: yes
+number_sections: true
+toc_depth: 3
+toc_float: true
 ---
 
 ```{r setup, include=FALSE}
