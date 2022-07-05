@@ -2,8 +2,10 @@ anno.rds
 dds_mixeddesign.rds
 PAS.rds
 commit_message.txt
-/raw_files/GOterms.xlsx
+/raw_files
 3.0_rds
+
+PAS_analysis.Rproj
 
 .Rproj.user
 .Rhistory
