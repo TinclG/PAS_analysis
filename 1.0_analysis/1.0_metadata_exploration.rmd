@@ -38,6 +38,7 @@ library(IHW)
 library(pcaExplorer)
 library(clusterProfiler)
 library(ReactomePA)
+library("here")
 
 ```
 
@@ -161,15 +162,16 @@ results_mus_PAS<- results_mus_PAS %>%
 
 
 ```{r}
-#merging thedf into ENS_sig (between PAS and ctrl)
+#merging the df into ENS_sig (between PAS and ctrl)
 ENS_sig<- merge(as.data.frame(sig.res), PASbackup, by.y="gene_id", by.x= "row.names")
 
 ENS_bg<-merge(as.data.frame(results_mus_ctrl), PASbackup, by.y="gene_id", by.x= "row.names")
 ```
 
-### normalisation
+### nCount data transformation
 
 ```{r}
+# Extracting transformed values
 vsd <- vst(dds, blind=FALSE)
 rld <- rlog(dds, blind=FALSE)
 head(assay(rld), 3)
@@ -179,6 +181,8 @@ rld_df<-as.matrix(assay(rld))
 ```
 
 ### likelihood test ratio
+
+[Likelihood test ratio workfloq](https://hbctraining.github.io/DGE_workshop_salmon/lessons/08_DGE_LRT.html)
 
 ```{r}
 dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
@@ -199,7 +203,12 @@ nrow(sigLRT_genes)
 
 ```
 
-#clustering the genes
+# Clustering the genes
+
+Aim: To identify gene clusters exhibiting particular patterns
+Results: 
+Cluster 2: genes that are upregulated in ctrl vs. PAS
+
 
 ```{r}
  #Subset results for faster cluster finding (for classroom demo purposes)
@@ -214,17 +223,27 @@ cluster_rlog <- rdl_mat[clustering_sig_genes$gene, ]
 
 #you have to put the anno in factors
 anno$place<-as.factor(anno$place)
+
 # determining sets of genes with similar expression patterns across sample groups
 # Use the `degPatterns` function from the 'DEGreport' package to show gene clusters across sample groups
+#BiocManager::install("DEGreport")
 library(DEGreport)
-clusters <- degPatterns(cluster_rlog, metadata = anno, time = "place", col=NULL ) 
+clusters <- degPatterns(cluster_rlog, 
+                        metadata = anno, 
+                        time = "place", 
+                        col=NULL ) 
 #??? put the gene names in the df
 head(clusters$df)
+
+cluster_2_genes <- clusters$df %>%
+          filter(cluster == 2)
 ```
 
 ```{r}
 plotPCA(vsd, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
 #color on 2 levels place and PAscore
 ```
+
+
 
 <https://bioconductor.org/packages/release/bioc/manuals/ReactomePA/man/ReactomePA.pdf> \## ReactomePA
