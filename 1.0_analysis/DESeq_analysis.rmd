@@ -100,10 +100,11 @@ res<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "control"))
 resultsNames(dds)
 
 resLFC<-lfcShrink(dds, coef = "place_PAS_vs_control", type="apeglm")
-#you need to cite this
+#you need to cite this: Analyzing RNA-seq data with DESeq2
 resLFC
 ```
 
+###p-values and adjusted p-val
 ```{r}
 resOrdered <- res[order(res$pvalue),]
 summary(res)
@@ -113,6 +114,8 @@ summary(res05)
 sum(res05$padj < 0.05, na.rm=TRUE)
 
 ```
+
+
 ## MA plot
 ```{r}
 #Exploring results
