@@ -29,10 +29,12 @@ dds_airway <- DESeqDataSet(airway,design= ~ cell + dex)
 rld_airway <- rlogTransformation(dds_airway)
 rld_airway
 ```
+
 ##On airway data 
+
 ```{r}
-pcaExplorer(dds = dds_airway,
-            dst = rld_airway)
+#pcaExplorer(dds = dds_airway,
+            #dst = rld_airway)
 library(org.Hs.eg.db)
 keytypes(org.Hs.eg.db)
 
@@ -40,8 +42,8 @@ keytypes(org.Hs.eg.db)
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-#BiocManager::install("EnsDb.Hsapiens.v75")
-#library(EnsDb.Hsapiens.v75)
+BiocManager::install("EnsDb.Hsapiens.v75")
+library(EnsDb.Hsapiens.v75)
 
 dds_airway <- DESeq(dds_airway)
 res_airway <- results(dds_airway) #this will be used from dds object from 1.0 metadata
@@ -85,6 +87,7 @@ topgoDE_airway <- topGOtable(de_symbols, bg_symbols,
                              ontology = "BP",
                              mapping = "org.Hs.eg.db",
                              geneID = "symbol")
+
 ```
 # on PAS data
 
@@ -108,13 +111,13 @@ annotation_GO <- data.frame(gene_name = genenames_GO,
                                 stringsAsFactors = FALSE)
 head(annotation_GO)  
 
-anno_df_orgdb <- get_annotation_orgdb(dds = dds_GO,
-                                      orgdb_species = "org.Hs.eg.db",
-                                      idtype = "ENSEMBL")
+#anno_df_orgdb <- get_annotation_orgdb(dds = dds_GO,
+                                      #orgdb_species = "org.Hs.eg.db",
+                                      #idtype = "ENSEMBL")
 
-anno_df_biomart <- get_annotation(dds = dds_GO,
-                                  biomart_dataset = "hsapiens_gene_ensembl",
-                                  idtype = "ensembl_gene_id")
+#anno_df_biomart <- get_annotation(dds = dds_GO,
+                                  #biomart_dataset = "hsapiens_gene_ensembl",
+                                  #idtype = "ensembl_gene_id")
 
 intersect(rownames(res),keys(org.Hs.eg.db,"ENSEMBL")) # not all keys are in the rownames
 
