@@ -2,10 +2,10 @@ anno.rds
 dds_mixeddesign.rds
 PAS.rds
 commit_message.txt
-/4.0_data
-/2.0_results
+4.0_data/
+2.0_results/
 
-PAS_analysis.Rproj
+*.Rproj
 
 .Rproj.user
 .Rhistory
