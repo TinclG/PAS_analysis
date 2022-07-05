@@ -28,7 +28,7 @@ library(ALL)
 library(pcaExplorer)
 data(ALL)
 data(geneList)
-BiocManager::install("hgu95av2.db")
+#BiocManager::install("hgu95av2.db")
  affyLib <- paste(annotation(ALL), "db", sep = ".")
  library(package = affyLib, character.only = TRUE)
  
@@ -73,11 +73,11 @@ genes<- as.data.frame(genes)
 
 #skip thisgenes<-t(genes)
 
-#get a facttor with 2 levels--> named nummeric vector
+#get a factor with 2 levels--> named numeric vector
 
 
 GeneList <- genes$padj #this is not correct 
-GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
+#GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
 names (GeneList) <- all_genes_names #naming the vector 
 head(GeneList)
 #https://www.biostars.org/p/2063/ 

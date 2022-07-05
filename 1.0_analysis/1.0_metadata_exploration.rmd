@@ -28,12 +28,12 @@ Workflow sources:
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install("pasilla")
+#BiocManager::install("pasilla")
 library("pasilla")
 library("DESeq2")
 library("tidyverse")
 
-BiocManager::install(c("IHW","pcaExplorer","clusterProfiler","ReactomePA"))
+#BiocManager::install(c("IHW","pcaExplorer","clusterProfiler","ReactomePA"))
 library(IHW)
 library(pcaExplorer)
 library(clusterProfiler)
