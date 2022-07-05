@@ -9,7 +9,7 @@ library("here")
 library("pasilla")
 library("DESeq2")
 library("tidyverse")
-library(IHW)
+library("IHW")
 ```
 
 ```{r}
@@ -253,7 +253,9 @@ pheatmap(sampleDistMatrix,
 ```{r}
 plotPCA(vsd, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2) #500 is default
 ```
+
 #Creating dds2 with just 2 factors for place- control and PAS
+
 ```{r}
 
 
@@ -393,6 +395,7 @@ nrow(sigLRT_genes)
 ```
 
 ## identifying clustered gene expressions
+
 Genes that have particular expression pattern across the sample/condition 
 ```{r}
 

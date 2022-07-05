@@ -16,6 +16,7 @@ https://bioconductor.org/packages/devel/bioc/vignettes/pcaExplorer/inst/doc/pcaE
 ```{r}
 library(DESeq2)
 library(clusterProfiler)
+BiocManager::install("airway")
 library(airway)
 data(airway)
 

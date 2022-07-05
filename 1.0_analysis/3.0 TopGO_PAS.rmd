@@ -11,7 +11,7 @@ date: 26.1.22
      install.packages("BiocManager")
  BiocManager::install()
 if (!requireNamespace("BiocManager", quietly=TRUE))
-install.packages("BiocManager")
+
 BiocManager::install("topGO")
 library(tidyverse)
 ```
