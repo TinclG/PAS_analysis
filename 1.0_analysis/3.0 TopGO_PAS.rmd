@@ -26,7 +26,11 @@ library(pcaExplorer)
  
  
  
- ## TopGO vignetter
+ ## TopGO vignette
+ 
+ http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=pdf
+ 
+ 
 ```{r, eval=FALSE}
 #package PcaExplorer topGOtable
 #clusterexplorer
@@ -112,6 +116,7 @@ GOdata <- new("topGOdata",
 following the topgo vignette 
 [topGO](https://bioconductor.org/packages/devel/bioc/vignettes/topGO/inst/doc/topGO.pdf)
 
+### PCA explorer workflow
 
 ```{r}
 #topGOtable with pcaExplorer ##NOT WORKING 
@@ -170,22 +175,29 @@ resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks")
 resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks", na.rm=T)
 ##### error not enough y data
 ## could be the problem with NA in ENS_sig
+
+#### Solution in other vignette (link below), to get the elim results
+test.stat <- new("elimCount", testStatistic = GOFisherTest,
+                 name = "Fisher test", cutOff = 0.01)
+resultElim <- getSigGroups(GOdata, test.stat)
+#http://compdiag.molgen.mpg.de/ngfn/docs/2007/sep/topGO_Exercises.pdf 
 ```
 
 ## Analysis of results
 
 analysis of most sig. GO terms and coresponding p-val
 GenTable() returns a df containing topnodes GO term, for assessing the GO's term pval- score()
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=pdf
 
 ```{r}
 
 allRes <- GenTable(GOdata, classicFisher = resultFisher,
-                    classicKS = resultKS, elimKS = resultKS.elim, #with elim method 
+                    classicKS = resultKS, elimKS = resultElim, #with elim method from the second elim calculation (see solution)
                     orderBy = "elimKS", ranksOf = "classicFisher", topNodes = 50) # go for all of them and select what you want 
 allRes #depends on the threshold that you use
 
  pValue.classic <- score(resultKS)
- pValue.elim <- score(resultKS.elim)[names(pValue.classic)]
+ pValue.elim <- score(resultElim)[names(pValue.classic)]
  gstat <- termStat(GOdata, names(pValue.classic))
  gSize <- gstat$Annotated / max(gstat$Annotated) * 4
  colMap <- function(x) {
