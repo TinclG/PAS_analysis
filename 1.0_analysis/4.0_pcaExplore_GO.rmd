@@ -144,7 +144,7 @@ topgoDE_GO <- topGOtable(de_symbols, bg_symbols,
                              ontology = "BP",
                              mapping = "org.Hs.eg.db",
                              geneID = "symbol")
-#error NA in rownames
+#working on 11.7.2022
 
 ```
 
