@@ -42,8 +42,9 @@ keytypes(org.Hs.eg.db)
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install("EnsDb.Hsapiens.v75")
+#BiocManager::install("EnsDb.Hsapiens.v75")
 library(EnsDb.Hsapiens.v75)
+library(pcaExplorer)
 
 dds_airway <- DESeq(dds_airway)
 res_airway <- results(dds_airway) #this will be used from dds object from 1.0 metadata
@@ -52,14 +53,7 @@ annotation_airway <- data.frame(gene_name = genenames_airway,
                                 row.names = rownames(dds_airway),
                                 stringsAsFactors = FALSE)
 head(annotation_airway)   
-# the other
-anno_df_orgdb <- get_annotation_orgdb(dds = dds_airway,
-                                      orgdb_species = "org.Hs.eg.db",
-                                      idtype = "ENSEMBL")
 
-anno_df_biomart <- get_annotation(dds = dds_airway,
-                                  biomart_dataset = "hsapiens_gene_ensembl",
-                                  idtype = "ensembl_gene_id")
 res_airway$symbol <- mapIds(org.Hs.eg.db,
                             keys= row.names(res_airway),
                             column="SYMBOL",
