@@ -109,35 +109,46 @@ GOdata <- new("topGOdata",
 ```
 
 ##topGOtable
-? what are the inputs I need to use? 
+following the topgo vignette 
+[topGO](https://bioconductor.org/packages/devel/bioc/vignettes/topGO/inst/doc/topGO.pdf)
+
+
 ```{r}
 #topGOtable with pcaExplorer ##NOT WORKING 
-res$symbol <- mapIds(org.Hs.eg.db,
-                            keys=row.names(res),
+res<-ENS_sig
+
+# tidying the df
+ENS_sig$Row.names<-gsub("\\..*","",ENS_sig$Row.names)
+rownames(ENS_sig)<-make.names(ENS_sig$Row.names, unique=T)
+
+ENS_res$symbol <- mapIds(org.Hs.eg.db,
+                            keys=row.names(ENS_res),
                             column="SYMBOL",
                             keytype="ENSEMBL",
                             multiVals="first") # P- getting symbols in 
-res$entrez <- mapIds(org.Hs.eg.db,
-                            keys=row.names(res),
+ENS_res$entrez <- mapIds(org.Hs.eg.db,
+                            keys=row.names(ENS_res),
                             column="ENTREZID",
                             keytype="ENSEMBL",
                             multiVals="first")
-resOrdered <- as.data.frame(res[order(res$padj),])
+resOrdered <- as.data.frame(ENS_res[order(res$padj),])
 head(resOrdered)
+
 # extract DE genes
 de_df <- resOrdered[resOrdered$padj < .05 & !is.na(resOrdered$padj),]
 de_symbols <- de_df$symbol
 #getting BG genes
 bg_ids <- rownames(dds)[rowSums(counts(dds)) > 0]
+bg_ids<-gsub("\\..*","",bg_ids)
 bg_symbols <- mapIds(org.Hs.eg.db,
                      keys=bg_ids,
                      column="SYMBOL",
                      keytype="ENSEMBL",
                      multiVals="first")
-GOdata_2<-topGOtable(GOdata, bg_symbols,
+GOdata_2<-topGOtable(de_symbols, bg_symbols,
                             ontology="BP", 
                             mapping = "org.Hs.eg.db",
-                            geneID = "symbol") ##??? allgenes must be a factor with two levels
+                            geneID = "symbol") 
   
 
 ```
@@ -156,10 +167,13 @@ resultFisher
  
 ```{r}
 resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks")
-resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks")
+resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks", na.rm=T)
+##### error not enough y data
+## could be the problem with NA in ENS_sig
 ```
 
 ## Analysis of results
+
 analysis of most sig. GO terms and coresponding p-val
 GenTable() returns a df containing topnodes GO term, for assessing the GO's term pval- score()
 
