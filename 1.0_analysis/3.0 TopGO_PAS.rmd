@@ -12,25 +12,30 @@ date: 26.1.22
  BiocManager::install()
 if (!requireNamespace("BiocManager", quietly=TRUE))
 
-BiocManager::install("topGO")
+#BiocManager::install("topGO")
 library(tidyverse)
+ require(topGO)
+require(org.Hs.eg.db)
+library(janitor)
+ library(topGO)
+library(ALL)
+library(pcaExplorer)
+ BiocManager::install("hgu95av2.db")
+ library(package = affyLib, character.only = TRUE)
 ```
  
  
  
- 
+ ## TopGO vignetter
 ```{r, eval=FALSE}
 #package PcaExplorer topGOtable
 #clusterexplorer
 #ReactomePA
-library(topGO)
-library(ALL)
-library(pcaExplorer)
+
 data(ALL)
 data(geneList)
-#BiocManager::install("hgu95av2.db")
- affyLib <- paste(annotation(ALL), "db", sep = ".")
- library(package = affyLib, character.only = TRUE)
+affyLib <- paste(annotation(ALL), "db", sep = ".")
+ 
  
 ```
 ```{r, eval=F}
@@ -43,29 +48,34 @@ head(topDiffGenes(geneList))
                      annot = annFUN.db, affyLib = affyLib)
 
 ```
+# TopGO on the RNAseq results
+## Preparing the input vector
+
+The input should be a named vector of DEG genes. Used is ENS_sig object created in
+1.0_metadata_exploration. (changed on 11.7.22)
+
+If using sig.res you need to change the code. 
 ```{r puting the genes as named vector}
-require(topGO)
-require(org.Hs.eg.db)
-library(janitor)
-genes<-sig.res
+
+genes<-ENS_sig #trying with ENS_sig instead of sig.genes
 
 head(genes)
 
 genes<-genes%>%
-   data.frame() %>% 
-   rownames_to_column(var="gene")%>%
+   #data.frame() %>% 
+   #rownames_to_column(var="gene_names")%>%
    as_tibble()
 genes<- genes %>%
-  dplyr::select(c(gene, padj)) #selecting the columns gene and padj
+  dplyr::select(c(gene_name, padj)) #selecting the columns gene and padj
   
-all_genes_names <- genes$gene
+all_genes_names <- genes$gene_name
 
 
 # changing into the tibble with gene as rownames 
-rownames(genes) <- genes$gene 
+which(duplicated(genes$gene_name) == TRUE)
+rownames(genes) <- make.names(genes$gene_name, unique=TRUE)
 genes<-genes %>%  
-  remove_rownames() %>% 
-  column_to_rownames(var = "gene")
+  remove_rownames() 
 
 
 #converting into dataframe 
@@ -77,9 +87,10 @@ genes<- as.data.frame(genes)
 
 
 GeneList <- genes$padj #this is not correct 
-#GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
+GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
 names (GeneList) <- all_genes_names #naming the vector 
 head(GeneList)
+head(geneList)
 #https://www.biostars.org/p/2063/ 
 #https://www.biostars.org/p/350710/ 
 
