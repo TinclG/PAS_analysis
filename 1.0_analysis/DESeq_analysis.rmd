@@ -31,11 +31,11 @@ cts <- cts[, rownames(coldata)]
 ```{r import}
 
 
-PAS<-read.table("PAS_counts.tsv", sep="", header = T)
+PAS<-read.table(paste0(path2data, "/PAS_counts.tsv"), sep="", header = T)
 
 PASbackup<-PAS
-anno<-read.csv("metadata_PASeq.csv",
-                  sep= ";")
+#anno<-read.csv("metadata_PASeq.csv",
+                  #sep= ";")
 
 anno<-anno[, c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight")]
 rownames(anno)<-anno$seq_ID
