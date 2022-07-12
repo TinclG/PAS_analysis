@@ -21,6 +21,9 @@ library(janitor)
 library(ALL)
 library(pcaExplorer)
  BiocManager::install("hgu95av2.db")
+data(ALL)
+data(geneList)
+affyLib <- paste(annotation(ALL), "db", sep = ".")
  library(package = affyLib, character.only = TRUE)
 ```
  
@@ -30,18 +33,7 @@ library(pcaExplorer)
  
  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=pdf
  
- 
-```{r, eval=FALSE}
-#package PcaExplorer topGOtable
-#clusterexplorer
-#ReactomePA
 
-data(ALL)
-data(geneList)
-affyLib <- paste(annotation(ALL), "db", sep = ".")
- 
- 
-```
 ```{r, eval=F}
 sum(topDiffGenes(geneList))
 head(topDiffGenes(geneList))
@@ -85,10 +77,8 @@ genes<-genes %>%
 #converting into dataframe 
 genes<- as.data.frame(genes)
 
-#skip thisgenes<-t(genes)
 
 #get a factor with 2 levels--> named numeric vector
-
 
 GeneList <- genes$padj #this is not correct 
 GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
@@ -99,16 +89,80 @@ head(geneList)
 #https://www.biostars.org/p/350710/ 
 
 
-
+#https://www.biostars.org/p/471549/
 selection <- function(allScore){ return(allScore < 0.05)} # function that returns TRUE/FALSE for p-values<0.05
-allGO2genes <- annFUN.org(whichOnto="BP", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
-GOdata <- new("topGOdata",
+allGO2genes_BP <- annFUN.org(whichOnto="BP", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
+GOdata_BP <- new("topGOdata",
   ontology="BP",  # you can change this to #NF #CP
   allGenes=GeneList,
   annot=annFUN.GO2genes,
-  GO2genes=allGO2genes,
+  GO2genes=allGO2genes_BP,
   geneSel=selection,
   nodeSize=10) #creating the GOdata object which is then used for the GO analysis
+
+allGO2genes_MF <- annFUN.org(whichOnto="MF", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
+GOdata_MF <- new("topGOdata",
+  ontology="MF",  # you can change this to #NF #CP
+  allGenes=GeneList,
+  annot=annFUN.GO2genes,
+  GO2genes=allGO2genes_MF,
+  geneSel=selection,
+  nodeSize=10)
+
+allGO2genes_CC <- annFUN.org(whichOnto="CC", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
+GOdata_CC <- new("topGOdata",
+  ontology="CC",  # you can change this to #NF #CP
+  allGenes=GeneList,
+  annot=annFUN.GO2genes,
+  GO2genes=allGO2genes_CC,
+  geneSel=selection,
+  nodeSize=10)
+
+#merging the GOdata
+GOdata<-rbind(GOdata_BP,GOdata_MF, GOdata_CC)
+
+#################### writing a loop --> doesnt work
+
+All_genes<-lapply(Onto, annFUN.org, mapping="org.Hs.eg.db")
+### creating a list of all genes for each ontology
+
+#for loop--> not working
+Onto<- c("BP", "MF", "CC")
+GO_list<-list()
+for (i in 1:length(Onto)){
+
+  GO_res <- new("topGOdata",
+  ontology= i,  # you can change this to #NF #CP
+  allGenes=GeneList,
+  annot=annFUN.GO2genes,
+  GO2genes=All_genes[[i]],
+  geneSel=selection,
+  nodeSize=10)
+  GO_list[[i]]<-GO_res
+ }
+
+
+# trying out with lapply
+GO_res<- lapply(Onto, new, 
+                allGenes=GeneList, 
+                annot= annFUN.GO2genes, 
+                GO2genes= All_genes, nodeSize=10, geneSel=selection)
+
+
+GOdata <- new("topGOdata",
+  ontology="MF",  # you can change this to #NF #CP
+  allGenes=GeneList,
+  annot=annFUN.GO2genes,
+  GO2genes=All_genes[[2]],
+  geneSel=selection,
+  nodeSize=10)
+
+GOdataMF <- new("topGOdata",
+        ontology = "MF", # use biological process ontology
+        allGenes = GeneList,
+        geneSel=selection,
+    annot = annFUN.GO2genes,
+    GO2genes= All_genes[[2]])
 
 ```
 
@@ -212,7 +266,7 @@ allRes #depends on the threshold that you use
 references for comparison: https://www.frontiersin.org/articles/10.3389/fgene.2020.551495/full 
 
 ```{r visualisation of GO}
-#doesnt work
+#--------Source: https://www.biostars.org/p/471549/
 require(ggplot2)
 library(scales)
 
