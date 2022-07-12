@@ -243,6 +243,10 @@ analysis of most sig. GO terms and coresponding p-val
 GenTable() returns a df containing topnodes GO term, for assessing the GO's term pval- score()
 http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=pdf
 
+The elim method was design to be more conservative then the
+classic method and therefore one expects the p-values returned by the former method 
+are lower bounded by the p-values returned by the later method
+
 ```{r}
 
 allRes <- GenTable(GOdata, 
@@ -262,18 +266,29 @@ allRes #depends on the threshold that you use
  colMap <- function(x) {
   .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
   return(.col[match(1:length(x), order(x))])
-}
+ }
+ 
  gCol <- colMap(gstat$Significant)
- GOplot<-plot(pValue.classic, pValue.elim, xlab = "p-value classic", ylab = "p-value elim",
+plot(pValue.classic, pValue.elim, xlab = "p-value classic", ylab = "p-value elim",
       pch = 19, cex = gSize, col = gCol)
+ 
+ 
  write.csv(allRes, "GOterms.csv")
+ 
+```
+
+some pvalues will be less significant in elim compared to the classical. To idenify these we run the following command: 
+
+```{r}
  
 sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
  cbind(termStat(GOdata, sel.go),
 elim = pValue.elim[sel.go],
 classic = pValue.classic[sel.go])
 ```
-references for comparison: https://www.frontiersin.org/articles/10.3389/fgene.2020.551495/full 
+references for comparison with PAS: https://www.frontiersin.org/articles/10.3389/fgene.2020.551495/full 
+
+
 
 
 ```{r visualisation of GO}
@@ -281,12 +296,12 @@ references for comparison: https://www.frontiersin.org/articles/10.3389/fgene.20
 require(ggplot2)
 library(scales)
 
-allRes$Fisher<-as.numeric(allRes$Fisher)
+allRes$classicFisher<-as.numeric(allRes$classicFisher)
 ntop <- 30
 ggdata <- allRes[1:ntop,]
 ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
 gg1 <- ggplot(ggdata,
-  aes(x = Term, y = -log10(Fisher), size = -log10(Fisher), fill = -log10(Fisher))) +
+  aes(x = Term, y = -log10(classicFisher), size = -log10(classicFisher), fill = -log10(classicFisher))) +
 
   expand_limits(y = 1) +
   geom_point(shape = 21) +
@@ -326,16 +341,18 @@ gg1 <- ggplot(ggdata,
     title = element_text(size = 14, face = "bold")) +
 
   coord_flip()
+
+showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = 'all')
 ```
 
-
+How significant GO terms are distributed over GO graph
 ```{r}
 sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
  cbind(termStat(GOdata, sel.go),
        elim = pValue.elim[sel.go],
        classic = pValue.classic[sel.go])
  pdf("plotGO.pdf")
- showSigOfNodes(GOdata, score(resultKS.elim), firstSigNodes = 5, useInfo = 'all')
+ showSigOfNodes(GOdata, score(resultElim), firstSigNodes = 5, useInfo = 'all')
  dev.off()
 ```
 
@@ -347,10 +364,15 @@ head(BPterms)
 
 ```
 
-```{r working with TopGodData}
+```{r working with TopGoData}
  a <- genes(GOdata) ## obtain the list of genes
  head(a)
  numGenes(GOdata)
+ ### Error in (function (classes, fdef, mtable)  : 
+  #unable to find an inherited method for function 'genes' for signature '"topGOdata"'
+ 
+ a<-GOdata@allGenes
+ head(a)
  
  # retrieving a score of specified set of genes
 selGenes <- sample(a, 10)
@@ -394,6 +416,14 @@ num.ann.genes <- countGenesInTerm(GOdata, sel.terms) ## the number of annotated 
  termStat(GOdata, sel.terms)
 ```
 ´
+## Analysing individual GO
+
+```{r}
+goID <- allRes[10, "GO.ID"]
+gt <- printGenes(GOdata, whichTerms = goID, chip = affyLib, numChar = 40)
+### Error no valje for BHLHE40? 
+```
+
 
 
 ```{r}
