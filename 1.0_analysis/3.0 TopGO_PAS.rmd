@@ -245,11 +245,16 @@ http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=
 
 ```{r}
 
-allRes <- GenTable(GOdata, classicFisher = resultFisher,
-                    classicKS = resultKS, elimKS = resultElim, #with elim method from the second elim calculation (see solution)
-                    orderBy = "elimKS", ranksOf = "classicFisher", topNodes = 50) # go for all of them and select what you want 
+allRes <- GenTable(GOdata, 
+                  classicFisher = resultFisher,
+                  classicKS = resultKS, 
+                  elimKS = resultElim, #with elim method from the second elim calculation (see solution)
+                  orderBy = "elimKS", ranksOf = "classicFisher", topNodes = 50) # go for all of them and select what you want 
 allRes #depends on the threshold that you use
+#### Result is a topNodes GO terms identified by the elim algorithm
 
+
+## Accessing p-values from the GO object
  pValue.classic <- score(resultKS)
  pValue.elim <- score(resultElim)[names(pValue.classic)]
  gstat <- termStat(GOdata, names(pValue.classic))
@@ -262,17 +267,23 @@ allRes #depends on the threshold that you use
  GOplot<-plot(pValue.classic, pValue.elim, xlab = "p-value classic", ylab = "p-value elim",
       pch = 19, cex = gSize, col = gCol)
  write.csv(allRes, "GOterms.csv")
+ 
+sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
+ cbind(termStat(GOdata, sel.go),
+elim = pValue.elim[sel.go],
+classic = pValue.classic[sel.go])
 ```
 references for comparison: https://www.frontiersin.org/articles/10.3389/fgene.2020.551495/full 
+
 
 ```{r visualisation of GO}
 #--------Source: https://www.biostars.org/p/471549/
 require(ggplot2)
 library(scales)
 
-goEnrichment$classicFisher<-as.numeric(goEnrichment$Fisher)
+allRes$Fisher<-as.numeric(allRes$Fisher)
 ntop <- 30
-ggdata <- goEnrichment[1:ntop,]
+ggdata <- allRes[1:ntop,]
 ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
 gg1 <- ggplot(ggdata,
   aes(x = Term, y = -log10(Fisher), size = -log10(Fisher), fill = -log10(Fisher))) +
