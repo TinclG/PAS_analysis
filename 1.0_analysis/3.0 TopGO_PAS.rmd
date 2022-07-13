@@ -426,15 +426,6 @@ gt <- printGenes(GOdata_MF, whichTerms = goID, chip = affyLib, numChar = 40)
 
 
 
-```{r}
-#reactomePA
-library(ReactomePA)
-R_PA<-enrichPathway(
-names(GeneList),
-organism = "human"
-) #returns errors 
-```
-
 
 To do:
 
