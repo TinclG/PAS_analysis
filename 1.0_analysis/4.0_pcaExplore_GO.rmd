@@ -148,3 +148,47 @@ topgoDE_GO <- topGOtable(de_symbols, bg_symbols,
 
 ```
 
+##ReactomePA
+
+[ ReactimePA](https://bioconductor.org/packages/release/bioc/manuals/ReactomePA/man/ReactomePA.pdf)
+[vignette](https://yulab-smu.top/biomedical-knowledge-mining-book/reactomepa.html)
+
+Input data is a vector of Gene IDs
+
+```{r reactomePA}
+library(ReactomePA)
+library(DOSE)
+
+#converting the ensebl to entrez id
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+ENS_res$ENTREZID_id = mapIds(org.Hs.eg.db,
+                       keys=ENS_res$Row.names, 
+                        column="ENTREZID",
+                        keytype="ENSEMBL",
+                        multiVals="first")
+
+#creating a vector of ENTREZID_ids 
+Gene_ID<-ENS_res$ENTREZID_id
+
+R_PA<-enrichPathway(gene=Gene_ID, pvalueCutoff = 0.05, readable = T)
+head(R_PA)
+
+## Reactome pathway gene set enrichment analysis
+Gene_ID<- sort(Gene_ID, decreasing = T)
+R_pathway<- gsePathway(Gene_ID,
+                       pvalueCutoff = 0.2,
+                       pAdjustMethod = "BH",
+                       verbose=F)
+
+# trying according to vignette--> doesnt work 
+data(geneList, package="DOSE"
+)
+de <- names(geneList)[abs(geneList) > 1.5]
+head(de)
+de<-sort(de, decreasing = T)
+R_pathway<- gsePathway(de,
+                       pvalueCutoff = 0.2,
+                       pAdjustMethod = "BH",
+                       verbose=F)
+```
