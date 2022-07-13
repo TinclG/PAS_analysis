@@ -1,14 +1,26 @@
 ---
 title: "Var_part.rmd"
-output: pdf_document
 author: Tina Gorsek Sparovec
 date: february 2022
+params:
+data: "../4.0_data"
+results: "../2.0_results"
+lib: "../0.0_lib"
+maxcores: 6
+output: html_notebook
+theme: spacelab
+highlight: textmate
+toc: yes
+number_sections: true
+toc_depth: 3
+toc_float: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+
 # Variance partitioning 
+
+[variance Partition workflow](https://r.qcbs.ca/workshop10/book-en/variation-partitioning.html)
+[variancePartition BioCond vignette](https://www.bioconductor.org/packages/devel/bioc/vignettes/variancePartition/inst/doc/variancePartition.pdf)
 
 framework for understanding drivers of variation
 in gene expression in experiments with complex designs. A
@@ -23,12 +35,17 @@ Needs normalised expression values
 1) gene expression matrix
 2) metadata
 3) model
-```{r}
+```{r, include=FALSE}
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("variancePartition")
 library("variancePartition")
+library("ggplot2")
+library("limma")
+library("BiocParallel")
+library("DESeq2")
+library("tidyverse")
 #data used sig.res and anno metadata
 ```
 
