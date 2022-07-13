@@ -2,7 +2,7 @@
 title: "Exploration_data"
 author: "Tina Gorsek Sparovec"
 params:
-  data: "../4.0_data"
+  data: "../data"
   results: "../2.0_results"
   lib: "../0.0_lib"
   maxcores: 6
@@ -69,9 +69,10 @@ PAS <- PAS |>
 In the design we included Grav, Para, sectio, Csec and place
 
 ```{r}
-dds<-DESeqDataSetFromMatrix(countData = PAS,
-                            colData=anno,
-                            design = ~ Grav + Para + sectio + Csec + place)
+
+dds <- DESeqDataSetFromMatrix(countData = PAS,
+                              colData = anno |> column_to_rownames(var = "seq_ID"),
+                              design = ~Grav + Para + sectio + Csec + place)
 #prefiltering- removing rows with few reads
 keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
@@ -86,11 +87,11 @@ note! for levels, the R will choose based on alphabetical order! careful
 
 ```{r}
 
-dds$place<-factor(dds$place, levels= c("ctrl", "mus", "PAS"))
+dds$place<-factor(dds$place, levels= c("Ctrl", "PAS", "CtrlMus"))
 dds <- DESeq(dds)
 results_PAS_ctrl <- results(dds)
-results_PAS_ctrl<-results(dds, name="place_PAS_vs_ctrl")
-results_PAS_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "ctrl"))
+results_PAS_ctrl <- results(dds, name ="place_PAS_vs_Ctrl")
+results_PAS_ctrl <- results(dds, filterFun = ihw, contrast = c("place", "PAS", "Ctrl"))
 
 results_PAS_ctrl<- as.data.frame(results_PAS_ctrl)
 results_PAS_ctrl<-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
@@ -104,7 +105,7 @@ sig.res<-results_PAS_ctrl|>  # using just the signif DEG
 
 ```{r}
 
-results_mus_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "mus", "ctrl"))
+results_mus_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "CtrlMus", "Ctrl"))
 results_mus_ctrl<- as.data.frame(results_mus_ctrl)
 results_mus_ctrl<- results_mus_ctrl %>%
   subset(padj<0.05)
@@ -113,7 +114,7 @@ results_mus_ctrl<- results_mus_ctrl %>%
 ## pas vs mus
 
 ```{r}
-results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "mus", "PAS"))
+results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "CtrlMus", "PAS"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
 results_mus_PAS<- results_mus_PAS %>%
   subset(padj<0.05)
@@ -187,7 +188,7 @@ anno$place<-as.factor(anno$place)
 # determining sets of genes with similar expression patterns across sample groups
 # Use the `degPatterns` function from the 'DEGreport' package to show gene clusters across sample groups
 #BiocManager::install("DEGreport")
-library(DEGreport)
+#library(DEGreport)
 clusters <- degPatterns(cluster_rlog, 
                         metadata = anno, 
                         time = "place", 
