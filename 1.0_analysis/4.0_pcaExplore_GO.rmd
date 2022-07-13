@@ -203,7 +203,7 @@ R_pathway<- gsePathway(de,
 ```
 
 ## Visualisation of the pathways 
-```{r}
+```{r Visualisation of the pathways }
 BiocManager::install("graphite")
 library("graphite")
 
