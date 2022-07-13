@@ -122,12 +122,12 @@ GOdata_CC <- new("topGOdata",
 GOdata<-rbind(GOdata_BP,GOdata_MF, GOdata_CC)
 
 #################### writing a loop --> doesnt work
-
+Onto<- c("BP", "MF", "CC")
 All_genes<-lapply(Onto, annFUN.org, mapping="org.Hs.eg.db")
 ### creating a list of all genes for each ontology
 
 #for loop--> not working
-Onto<- c("BP", "MF", "CC")
+
 GO_list<-list()
 for (i in 1:length(Onto)){
 
@@ -219,21 +219,21 @@ GOdata_2<-topGOtable(de_symbols, bg_symbols,
 ```{r}
 #performing an enrichment 
 
-resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+resultFisher <- runTest(GOdata_MF, algorithm = "classic", statistic = "fisher")
 resultFisher
 ```
  testing the enrichment using KS test, with classic and elim method
  
 ```{r}
-resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks")
-resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks", na.rm=T)
+resultKS <- runTest(GOdata_MF, algorithm = "classic", statistic = "ks")
+resultKS.elim <- runTest(GOdata_MF, algorithm = "elim", statistic = "ks", na.rm=T)
 ##### error not enough y data
 ## could be the problem with NA in ENS_sig
 
 #### Solution in other vignette (link below), to get the elim results
 test.stat <- new("elimCount", testStatistic = GOFisherTest,
                  name = "Fisher test", cutOff = 0.01)
-resultElim <- getSigGroups(GOdata, test.stat)
+resultElim <- getSigGroups(GOdata_MF, test.stat)
 #http://compdiag.molgen.mpg.de/ngfn/docs/2007/sep/topGO_Exercises.pdf 
 ```
 
@@ -249,7 +249,7 @@ are lower bounded by the p-values returned by the later method
 
 ```{r}
 
-allRes <- GenTable(GOdata, 
+allRes <- GenTable(GOdata_MF, 
                   classicFisher = resultFisher,
                   classicKS = resultKS, 
                   elimKS = resultElim, #with elim method from the second elim calculation (see solution)
@@ -261,7 +261,7 @@ allRes #depends on the threshold that you use
 ## Accessing p-values from the GO object
  pValue.classic <- score(resultKS)
  pValue.elim <- score(resultElim)[names(pValue.classic)]
- gstat <- termStat(GOdata, names(pValue.classic))
+ gstat <- termStat(GOdata_MF, names(pValue.classic))
  gSize <- gstat$Annotated / max(gstat$Annotated) * 4
  colMap <- function(x) {
   .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
@@ -282,7 +282,7 @@ some pvalues will be less significant in elim compared to the classical. To iden
 ```{r}
  
 sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
- cbind(termStat(GOdata, sel.go),
+ cbind(termStat(GOdata_MF, sel.go),
 elim = pValue.elim[sel.go],
 classic = pValue.classic[sel.go])
 ```
@@ -342,17 +342,17 @@ gg1 <- ggplot(ggdata,
 
   coord_flip()
 
-showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = 'all')
+showSigOfNodes(GOdata_MF, score(resultFisher), firstSigNodes = 5, useInfo = 'all')
 ```
 
 How significant GO terms are distributed over GO graph
 ```{r}
 sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
- cbind(termStat(GOdata, sel.go),
+ cbind(termStat(GOdata_MF, sel.go),
        elim = pValue.elim[sel.go],
        classic = pValue.classic[sel.go])
  pdf("plotGO.pdf")
- showSigOfNodes(GOdata, score(resultElim), firstSigNodes = 5, useInfo = 'all')
+ showSigOfNodes(GOdata_MF, score(resultElim), firstSigNodes = 5, useInfo = 'all')
  dev.off()
 ```
 
@@ -365,63 +365,63 @@ head(BPterms)
 ```
 
 ```{r working with TopGoData}
- a <- genes(GOdata) ## obtain the list of genes
+ a <- genes(GOdata_MF) ## obtain the list of genes
  head(a)
- numGenes(GOdata)
+ numGenes(GOdata_MF)
  ### Error in (function (classes, fdef, mtable)  : 
   #unable to find an inherited method for function 'genes' for signature '"topGOdata"'
  
- a<-GOdata@allGenes
+ a<-GOdata_MF@allGenes
  head(a)
  
  # retrieving a score of specified set of genes
 selGenes <- sample(a, 10)
- gs <- geneScore(GOdata, whichGenes = selGenes)
+ gs <- geneScore(GOdata_MF, whichGenes = selGenes)
  print(gs)
  
  # unnamed vector or the scrore of all genes
- gs<-geneScore(GOdata, whichGenes = selGenes, use.names=F)
+ gs<-geneScore(GOdata_MF, whichGenes = selGenes, use.names=F)
  print(gs)
- gs <- geneScore(GOdata, use.names = FALSE)
+ gs <- geneScore(GOdata_MF, use.names = FALSE)
  str(gs)
 
 #list of sig. genes
- sg <- sigGenes(GOdata)
+ sg <- sigGenes(GOdata_MF)
 str(sg)
-numSigGenes(GOdata)
+numSigGenes(GOdata_MF)
 
 # updating the genes 
-.geneList <- geneScore(GOdata, use.names = TRUE)
- GOdata ## more available genes
- GOdata <- updateGenes(GOdata, .geneList, topDiffGenes)
- GOdata ## the available genes are now the feasible genes
- graph(GOdata)                                              # ???is this number of nods7edges enough????
+.geneList <- geneScore(GOdata_MF, use.names = TRUE)
+ GOdata_MF ## more available genes
+ GOdata_MF <- updateGenes(GOdata_MF, .geneList, topDiffGenes)
+ GOdata_MF ## the available genes are now the feasible genes
+ graph(GOdata_MF)                                              # ???is this number of nods7edges enough????
 ```
 
 
 ```{r}
-ug <- usedGO(GOdata)
+ug <- usedGO(GOdata_MF)
  head(ug)
  
- sel.terms <- sample(usedGO(GOdata), 10) #selecting 10 random GO terms to get the genes 
-num.ann.genes <- countGenesInTerm(GOdata, sel.terms) ## the number of annotated genes > num.ann.genes
- ann.genes <- genesInTerm(GOdata, sel.terms) ## get the annotations
+ sel.terms <- sample(usedGO(GOdata_MF), 10) #selecting 10 random GO terms to get the genes 
+num.ann.genes <- countGenesInTerm(GOdata_MF, sel.terms) ## the number of annotated genes > num.ann.genes
+ ann.genes <- genesInTerm(GOdata_MF, sel.terms) ## get the annotations
  head(ann.genes)
  
  #sel.term missing== you get all the GO terms
- ann.score <- scoresInTerm(GOdata, sel.terms)
+ ann.score <- scoresInTerm(GOdata_MF, sel.terms)
  head(ann.score)
- ann.score <- scoresInTerm(GOdata, sel.terms, use.names = TRUE)
+ ann.score <- scoresInTerm(GOdata_MF, sel.terms, use.names = TRUE)
  head(ann.score)
- termStat(GOdata, sel.terms)
+ termStat(GOdata_MF, sel.terms)
 ```
 ´
 ## Analysing individual GO
 
-```{r}
+```{r Analysing individual GO}
 goID <- allRes[10, "GO.ID"]
-gt <- printGenes(GOdata, whichTerms = goID, chip = affyLib, numChar = 40)
-### Error no valje for BHLHE40? 
+gt <- printGenes(GOdata_MF, whichTerms = goID, chip = affyLib, numChar = 40)
+### Error no value for BHLHE40? 
 ```
 
 
@@ -449,7 +449,8 @@ age clust by similarity
 - pathways and functions - make a table 
 
 
-#topgotable
+#topgotable --> 4.0_pcaExplore_GO rmd.
+
 ```{r}
 #using res, anno, PAS 
 dds_GO <- DESeq(dds)
