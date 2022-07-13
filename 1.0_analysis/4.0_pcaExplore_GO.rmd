@@ -168,15 +168,24 @@ ENS_res$ENTREZID_id = mapIds(org.Hs.eg.db,
                         keytype="ENSEMBL",
                         multiVals="first")
 
-#creating a vector of ENTREZID_ids 
-Gene_ID<-ENS_res$ENTREZID_id
+#creating an object of ENTREZID_ids and padjust
+Gene_ID<-ENS_res %>%
+  as.tibble() %>%
+  dplyr::select(c(ENTREZID_id, padj))
 
-R_PA<-enrichPathway(gene=Gene_ID, pvalueCutoff = 0.05, readable = T)
+gene_nm<-Gene_ID$ENTREZID_id
+GeneID <- Gene_ID$padj #this is not correct 
+#GeneID<-as.numeric(GeneID) # converting doesnt work as.numeric
+names (GeneID) <- gene_nm #naming the vector 
+head(GeneID)
+
+#For the enrichPathway you need EntrezID- therefore you take gene_nm
+R_PA<-enrichPathway(gene=gene_nm, pvalueCutoff = 0.05, readable = T)
 head(R_PA)
 
 ## Reactome pathway gene set enrichment analysis
-Gene_ID<- sort(Gene_ID, decreasing = T)
-R_pathway<- gsePathway(Gene_ID,
+GeneID<- sort(GeneID, decreasing = T)
+R_pathway<- gsePathway(GeneID,
                        pvalueCutoff = 0.2,
                        pAdjustMethod = "BH",
                        verbose=F)
@@ -192,3 +201,16 @@ R_pathway<- gsePathway(de,
                        pAdjustMethod = "BH",
                        verbose=F)
 ```
+
+## Visualisation of the pathways 
+```{r}
+BiocManager::install("graphite")
+library("graphite")
+
+viewPathway("PAS invasion vs. control", 
+            readable = TRUE, 
+            foldChange = GeneID)
+## Error message: "unable to find an inherited method for function 'convertIdentifiers' for signature '"NULL"
+##Comment: got this even when working with vignette data 
+```
+
