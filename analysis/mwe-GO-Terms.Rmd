@@ -1,0 +1,50 @@
+---
+title: "MWE"
+output: html_notebook
+---
+# Minimal Working Example GO-Terms
+
+```{r}
+library(tidyverse)
+library(org.Hs.eg.db)
+library(topGO)
+library(pcaExplorer)
+
+# Required data: (From notebook: 1.0_metadata_exploration.rmd)
+# (1) Test results PAS vs. Ctrl and 
+# (2) CtrlMus vs. Ctrl, both unfiltered!
+
+results_PAS_ctrl
+results_mus_ctrl
+```
+
+## (1) Prepare input data
+First subset for genes with padj < 0.05 in both test results. Remove significant genes in CtrlMus vs. Ctrl from PAS vs. Ctrl.
+```{r}
+# Get significant genes to remove from CtrlMus vs. Ctrl comparison
+rm <- results_mus_ctrl |>
+  subset(padj < 0.05) |>
+  rownames_to_column(var = "gene_id") |>
+  pull(gene_id)
+
+dat <- results_PAS_ctrl |>
+  rownames_to_column(var = "gene_id")|>
+  subset(!gene_id %in% rm)
+
+# Define significance threshold and divide into up and down genes based on logFC
+up_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange > 0) |> pull(gene_id)
+dn_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange < 0) |> pull(gene_id)
+all_genes <- dat |> pull(gene_id)
+```
+
+## (2) Run TopGO with Biological (BP) process and Molecular function (MF)
+```{r}
+upRes <- lapply(c("BP", "MF"), function(ontology) {
+  topgoDE <- topGOtable(DEgenes = up_genes,
+                        BGgenes = all_genes,
+                        ontology = ontology,
+                        mapping = "org.Hs.eg.db",
+                        geneID = "ENSEMBL")
+  })
+upRes
+```
