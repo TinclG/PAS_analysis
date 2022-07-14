@@ -26,6 +26,13 @@ library(IHW)
 library(pcaExplorer)
 library(clusterProfiler)
 library(ReactomePA)
+library(gridExtra)
+library(cowplot)
+
+library(conflicted)
+
+conflict_prefer("rename", "dplyr")
+conflict_prefer("select", "dplyr")
 ```
 
 ##Sorting the metadata
@@ -52,13 +59,14 @@ anno$cutGW <- cut(anno$GW, c(0, 243, 269, Inf), c("<243", "244-269", ">269"), in
 anno$cutWeight <- cut(anno$weight, c(0, 2000, 3201, Inf), c("<2000", "2001-3201", ">3201"), include.lowest = TRUE)
 ```
 
+
 ## Reading in the count table 
 
 ```{r}
 PAS <- read_tsv(paste0(params$data, "/PAS_counts.tsv"))
 
 PAS <- PAS |>
-  mutate(gene_id = gsub("\\.[0-9]*$", "", gene_id)) |>
+  mutate(gene_id = gsub("\\.[0-9]*$", "", gene_id)) |> #regex pattern
   select(-gene_name) |>
   mutate_at(vars(-("gene_id")), ceiling) |>
   rename_with(~str_replace(., pattern = "AK19_", replacement = "")) |>
@@ -141,6 +149,28 @@ rld_df<-as.matrix(assay(rld))
 
 ```
 
+```{r}
+# rlog and vst transformation
+dds <- estimateSizeFactors(dds)
+rld <- rlog(dds)
+vst <- vst(dds, blind = TRUE)
+fpm <- fpm(dds)
+#fpkm
+```
+
+```{r}
+plot_layout <- function(df, x_string, y_string, title) {
+  ggplot(df, aes_string(x = x_string, y = y_string)) +
+    geom_point(size = 0.3) +
+    ggtitle(title)
+}
+
+# Have a look at different transformations by plotting first against second sample
+p <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized = TRUE))),"TG.1", "TG.2", "log2"),
+               plot_layout(as_tibble(assay(rld)),"TG.1", "TG.2", "rlog"),
+               plot_layout(as_tibble(assay(vst)),"TG.1", "TG.2", "vst"),
+               plot_layout(as_tibble(log2(fpm)),"TG.1", "TG.2", "fpm"))
+```
 ### likelihood test ratio
 
 [Likelihood test ratio workfloq](https://hbctraining.github.io/DGE_workshop_salmon/lessons/08_DGE_LRT.html)
@@ -155,7 +185,7 @@ dds_lrt <- DESeq(dds, test = "LRT",
 res_lrt <- results(dds_lrt)
     
 summary(res_lrt)
-sum(res_lrt$padj < 0.1, na.rm = TRUE)
+sum(res_lrt$padj < 0.01, na.rm = TRUE)
 sum(res_lrt$padj < 0.05, na.rm = TRUE)
 
 # Create a tibble for LRT results
@@ -217,6 +247,10 @@ plotPCA(vsd, intgroup = "place", ntop = 500) +
 
 ## Plot pca using ggplot
 ```{r}
+
+rld <- rlog(dds)
+vst
+
 # Extract pca coordinates
 pcaData <- plotPCA(rld, intgroup = c("place", "PA_score"), returnData = TRUE)
 percentVar <- round(100 * attr(pcaData, "percentVar"), digits = 1)
