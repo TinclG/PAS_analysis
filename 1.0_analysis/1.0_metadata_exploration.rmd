@@ -76,9 +76,17 @@ anno$GWscaled<-scale(anno$GW, center=TRUE)
 anno$SWeight<-scale(anno$weight, center = TRUE)
 
 # Transforming the continuous variables into factors by cutting them (should make biological sense)
-anno$cutGW <- cut(anno$GW, c(0, 196, 224, 259, Inf), c("<28","28-32", "32-37", ">38"), include.lowest = TRUE)
+anno$cutGW <- cut(anno$GW, 
+                  c(0, 196, 224, 259, Inf), 
+                  c("<28","28-32", "32-37", ">38"), 
+                  include.lowest = TRUE)
 #cutting the GW on extremely preterm < 28 weeks, Preterm 28-32, Moderate to Late preterm 32-37, Normal 38-42
-anno$cutWeight <- cut(anno$weight, c(0, 1500, 2500, 4200, Inf), c("VLBW", "LBW", "NBW", "LGW"), include.lowest = TRUE)
+
+
+anno$cutWeight <- cut(anno$weight, 
+                      c(0, 1500, 2500, 4200, Inf), 
+                      c("VLBW", "LBW", "NBW", "LGW"), 
+                      include.lowest = TRUE)
 # cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
 
 #saveRDS(anno, file= "anno.rds")
@@ -145,7 +153,7 @@ sig.res<-results_PAS_ctrl|>  # using just the signif DEG
 
 ```{r}
 
-results_mus_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "mus", "ctrl"))
+results_mus_ctrl<-results(dds, filterFun= ihw, contrast = c("place", "mus", "ctrl")) # reference level comes last!
 results_mus_ctrl<- as.data.frame(results_mus_ctrl)
 results_mus_ctrl<- results_mus_ctrl %>%
   subset(padj<0.05)
@@ -154,7 +162,7 @@ results_mus_ctrl<- results_mus_ctrl %>%
 ## pas vs mus
 
 ```{r}
-results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "mus", "PAS"))
+results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "mus"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
 results_mus_PAS<- results_mus_PAS %>%
   subset(padj<0.05)
@@ -164,7 +172,7 @@ results_mus_PAS<- results_mus_PAS %>%
 
 ```{r}
 #merging the df into ENS_sig (between PAS and ctrl)
-ENS_sig<- merge(as.data.frame(sig.res), PASbackup, by.y="gene_id", by.x= "row.names")
+ENS_sig<- merge(as.data.frame(sig.res), PASbackup, by.y="gene_id", by.x= "row.names") # have some kind of conversion key dataframe- at the very beggining just take the gene id and symbols into df, appent this - so that you dont have the counts.
 
 ENS_bg<-merge(as.data.frame(results_mus_ctrl), PASbackup, by.y="gene_id", by.x= "row.names")
 ```
@@ -178,7 +186,7 @@ rld <- rlog(dds, blind=FALSE)
 head(assay(rld), 3)
 rld_df<-as.matrix(assay(rld))
 #rld_df<-as.data.frame(rld_df)
-
+### plot the first against the second sample- if they are on the same line 
 ```
 
 ### likelihood test ratio
@@ -241,7 +249,7 @@ cluster_2_genes <- clusters$df %>%
 ```
 
 ```{r}
-plotPCA(vsd, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
+plotPCA(rld, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
 #color on 2 levels place and PAscore
 ```
 
