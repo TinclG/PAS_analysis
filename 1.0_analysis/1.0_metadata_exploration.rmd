@@ -25,71 +25,72 @@ Workflow sources:
 [Analyzing RNA-seq data with DESeq2](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#countmat)
 
 ```{r}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+#if (!require("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
 
 #BiocManager::install("pasilla")
-library("pasilla")
-library("DESeq2")
-library("tidyverse")
+library(pasilla)
+library(DESeq2)
+library(tidyverse)
 
 #BiocManager::install(c("IHW","pcaExplorer","clusterProfiler","ReactomePA"))
 library(IHW)
 library(pcaExplorer)
 library(clusterProfiler)
 library(ReactomePA)
-library("here")
+
 
 ```
 
-```{r}
 
-path2data<-("~/PAS_analysis/4.0_data")
-
-```
-
-##Sorting the metadata
+#Meta data wrangling
 
 ```{r}
-anno<-read.csv(paste0(path2data,"/metadata_PASeq.csv"),
+anno <- read.csv2(paste0(params$data,"/metadata_PASeq.csv"),
                   sep= ";")
 
-anno<-anno[, c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")]
-rownames(anno)<-anno$seq_ID
+anno <- anno |>
+  mutate(seq_ID = gsub("AK19_", "", seq_ID)) |> #renaming the seq_ID
+  relocate(c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")) |>
+  #change column order/ select columns
+  mutate_at(vars(-c("seq_ID", "week", "day", "GW", "weight")), factor) |> 
+  #assigning all except the mentioned in factors
+  mutate(sectio = recode_factor(sectio,
+                                "Prim. Sectio"= "1sec", 
+                                "Prim. sectio"= "1sec", 
+                                "Sek. Sectio"= "2sec")) |>
+  #changing the variables into factors
+  mutate(place = recode_factor(place,
+                               "control"= "Ctrl", 
+                               "control_mus"= "CtrlMus", 
+                               "PAS"= "PAS" )) |>
+  mutate(place = fct_relevel(place, c("Ctrl", "PAS", "CtrlMus")))
+  
+# If you have to mutate all columns- use mutate_all(factor)
+
 head(anno)
 
-#listing the variables as factors
-anno$place<-as.factor(anno$place)
-nameplace<-c(control= "ctrl", control_mus= "mus", PAS= "PAS" )
-anno$place<- as.character(nameplace[anno$place])
-anno$place<-as.factor(anno$place)
-anno$seq_ID<-substr(anno$seq_ID, 6,10)
-anno$seq_ID<-as.factor(anno$seq_ID)
-anno$GDM<-as.factor(anno$GDM)
-anno$Grav<-as.factor(anno$Grav)
-anno$Para<-as.factor(anno$Para)
 
-#renaming the variable sectio 
-namesec<- c("Prim. Sectio"= "1sec", "Prim. sectio"= "1sec", "Sek. Sectio"= "2sec")
-anno$sectio<- as.character(namesec[anno$sectio])
-anno$sectio<-as.factor(anno$sectio)
-
-#scaling int
+# Add scaled covariated to metadata
 anno$GWscaled<-scale(anno$GW, center=TRUE)
-#anno$GWscaled<-as.factor(anno$GWscaled)
 anno$SWeight<-scale(anno$weight, center = TRUE)
-#anno$patient<-as.factor(anno$patient)
-anno$Csec<-as.factor(anno$Csec)
-anno$PA_score<-as.factor(anno$PA_score)
-anno$Placenta_previa<-as.factor(anno$Placenta_previa)
+
+# Transforming the continuous variables into factors by cutting them (should make biological sense)
+anno$cutGW <- cut(anno$GW, c(0, 196, 224, 259, Inf), c("<28","28-32", "32-37", ">38"), include.lowest = TRUE)
+#cutting the GW on extremely preterm < 28 weeks, Preterm 28-32, Moderate to Late preterm 32-37, Normal 38-42
+anno$cutWeight <- cut(anno$weight, c(0, 1500, 2500, 4200, Inf), c("VLBW", "LBW", "NBW", "LGW"), include.lowest = TRUE)
+# cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
 
 #saveRDS(anno, file= "anno.rds")
 ```
 
+[reference birth weight](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5710996/)
+[reference gastational weeks](https://medlineplus.gov/ency/article/002367.htm)
+
 ## Reading in the count table 
 
 ```{r}
-PAS<-read.table(paste0(path2data, "/PAS_counts.tsv"), sep="", header = T)
+PAS<-read.tsv(paste0(params$data, "/PAS_counts.tsv"), sep="", header = T)
 
 
 PASbackup<-PAS
