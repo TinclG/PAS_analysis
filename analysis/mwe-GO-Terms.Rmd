@@ -9,6 +9,8 @@ library(tidyverse)
 library(org.Hs.eg.db)
 library(topGO)
 library(pcaExplorer)
+library(clusterProfiler)
+library(ReactomePA)
 
 # Required data: (From notebook: 1.0_metadata_exploration.rmd)
 # (1) Test results PAS vs. Ctrl and 
@@ -32,6 +34,7 @@ dat <- results_PAS_ctrl |>
   subset(!gene_id %in% rm)
 
 # Define significance threshold and divide into up and down genes based on logFC
+genes <- dat |> subset(padj < 0.05) |> pull(gene_id)
 up_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange > 0) |> pull(gene_id)
 dn_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange < 0) |> pull(gene_id)
 all_genes <- dat |> pull(gene_id)
@@ -48,3 +51,49 @@ upRes <- lapply(c("BP", "MF"), function(ontology) {
   })
 upRes
 ```
+
+
+## (3) Run other ORA tests
+```{r}
+# Add ENTREZ IDs
+ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(dat$gene_id),
+                                           keytype = "ENSEMBL",
+                                           columns = c("ENTREZID"))
+
+dat <- dat |> inner_join(ensembl_to_entrez, by = c("gene_id" = "ENSEMBL"))
+
+universe <- unique(dat$ENTREZID)
+genes <- dat |> subset(padj < 0.05) |> pull(ENTREZID) |> unique()
+```
+
+```{r}
+# KEGG pathway over-representation analysis
+Kegg <- enrichKEGG(
+  gene = genes,
+  universe = universe,
+  organism = 'hsa',
+  pvalueCutoff = 0.05)
+```
+```{r}
+Reactome <- enrichPathway(
+  gene = genes,
+  organism = "human",
+  universe = universe,
+  pvalueCutoff = 0.05,
+  readable = TRUE)
+
+as_tibble(Reactome@result)
+```
+
+```{r}
+WikiPathway <- enrichWP(
+  gene = genes,
+  universe = universe,
+  organism = 'Homo sapiens',
+  pvalueCutoff = 0.05)
+
+as_tibble(WikiPathway@result)
+```
+
+
+
