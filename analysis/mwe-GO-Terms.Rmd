@@ -95,5 +95,59 @@ WikiPathway <- enrichWP(
 as_tibble(WikiPathway@result)
 ```
 
+## Finer control on GO term tests
+
+```{r}
+ontology <- "BP"
+#ontology <- "CC" #(Cellular Component)
+#ontology <- "MF" #(Molecular Function)
+
+# Decide test algorithm
+algorithm <- "weight01"
+#algorithm <- "classic"
+#algorithm <- "elim"
+#algorithm <- "weight"
+#algorithm <- "lea"
+#algorithm <- "parentchild"
+
+# Define the statistical test used
+# For tests based on gene counts
+statistic <- "fisher"      # Fischer's exact test
+#For tests based on gene scores or gene ranks
+#statistic <- "ks"         # Kolmogorov-Smirnov test
+#statistic <- "t"          # t-test
+# For tests based on gene expression
+#statistic <- "globaltest" # globaltest
 
 
+# Produce list of up's
+upList <- factor(as.integer(all_genes %in% up_genes))
+names(upList) <- all_genes
+
+upGOdata <- new("topGOdata", ontology = ontology, allGenes = upList, geneSel = function(x)(x == 1), 
+                nodeSize = 10, annot = annFUN.org, mapping = "org.Hs.eg.db", ID = "ENSEMBL")
+
+upRes <- runTest(upGOdata, algorithm = algorithm, statistic = statistic)
+
+# Create result table
+# Build up result table
+up_tab <- GenTable(upGOdata, Pval = upRes, topNodes = 20)
+
+# Update table with full GO term name
+# Update up table 
+up_tab$Term <- sapply(up_tab$"GO.ID", function(go) Term(GO.db::GOTERM[[go]]))
+
+up_sigGenes <- sigGenes(upGOdata)
+
+# Retrieve gene symbols for each GO from the test result
+up_AnnoList <- lapply(up_tab$"GO.ID", 
+                      function(x) as.character(unlist(genesInTerm(object = upGOdata, whichGO = x))))
+
+up_SigList <- lapply(up_AnnoList, function(x) intersect(x, up_sigGenes))
+
+#Coerce gene list to a comma-separated vector
+up_tab$Genes <- sapply(up_SigList, paste, collapse = ",")
+
+# Cbind first 5 up 
+cbind(head(up_tab$Genes, 5))
+```
