@@ -146,8 +146,17 @@ rld_df<-as.matrix(assay(rld))
 [Likelihood test ratio workfloq](https://hbctraining.github.io/DGE_workshop_salmon/lessons/08_DGE_LRT.html)
 
 ```{r}
-dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
-res_LRT <- results(dds_lrt)
+
+# perform likelihood ratio test
+dds_lrt <- DESeq(dds, test = "LRT",
+                 full = ~Grav + Para + sectio + Csec + place,
+                 reduced = ~Grav + Para + sectio + Csec)
+
+res_lrt <- results(dds_lrt)
+    
+summary(res_lrt)
+sum(res_lrt$padj < 0.1, na.rm = TRUE)
+sum(res_lrt$padj < 0.05, na.rm = TRUE)
 
 # Create a tibble for LRT results
 res_LRT_tb <- res_LRT %>%
@@ -201,10 +210,30 @@ cluster_2_genes <- clusters$df %>%
 ```
 
 ```{r}
-plotPCA(vsd, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
+plotPCA(vsd, intgroup = "place", ntop = 500) + 
+  geom_text(aes(label = name),vjust = 2)
 #color on 2 levels place and PAscore
 ```
 
+## Plot pca using ggplot
+```{r}
+# Extract pca coordinates
+pcaData <- plotPCA(rld, intgroup = c("place", "PA_score"), returnData = TRUE)
+percentVar <- round(100 * attr(pcaData, "percentVar"), digits = 1)
 
+p <- ggplot(pcaData, aes(x = PC1, y = PC2)) +
+  geom_point(aes(fill = PA_score),
+             size = 8,
+             shape = 21) +
+  xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+  ggtitle("PCA Transcriptome")
+```
+
+```{r}
+p <- ggplot(pcaData, aes(x=PC1, y=PC2, col=place)) + 
+  geom_point(aes(shape=PA_score), size = 8) + 
+  labs(shape = "PA_score", colour = "place", size = "PA_score")
+```
 
 <https://bioconductor.org/packages/release/bioc/manuals/ReactomePA/man/ReactomePA.pdf> \## ReactomePA
