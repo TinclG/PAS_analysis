@@ -2,8 +2,8 @@ anno.rds
 dds_mixeddesign.rds
 PAS.rds
 commit_message.txt
-4.0_data/
-2.0_results/
+data/
+res/
 
 *.Rproj
 
