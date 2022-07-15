@@ -28,11 +28,14 @@ library(pcaExplorer)
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
- BiocManager::install("hgu95av2.db")
-data(ALL)
-data(geneList)
-affyLib <- paste(annotation(ALL), "db", sep = ".")
- library(package = affyLib, character.only = TRUE)
+BiocManager::install("hgu95av2.db")
+
+# Required data: from notebook 1.0_metadata_exploration
+
+# (1) subtraction/subset of the results_PAS_Ctrl and results_CtrlMus_Ctrl 
+
+ENS_sig
+ 
 ```
  
  
@@ -43,6 +46,10 @@ affyLib <- paste(annotation(ALL), "db", sep = ".")
  
 
 ```{r, eval=F}
+data(ALL)
+data(geneList)
+affyLib <- paste(annotation(ALL), "db", sep = ".")
+ library(package = affyLib, character.only = TRUE)
 sum(topDiffGenes(geneList))
 head(topDiffGenes(geneList))
  sampleGOdata <- new("topGOdata",
@@ -62,102 +69,19 @@ If using sig.res you need to change the code.
 
 ```{r puting the genes as named vector}
 
-genes<-ENS_sig #trying with ENS_sig instead of sig.genes
+genes <- ENS_sig |>
+  rownames_to_column(var = "gene_id") |>
+  pull(gene_id)
 
 head(genes)
 
-genes<-genes%>%
-   #data.frame() %>% 
-   #rownames_to_column(var="gene_names")%>%
-   as_tibble()
-genes<- genes %>%
-  dplyr::select(c(gene_name, padj)) #selecting the columns gene and padj
-  
-all_genes_names <- genes$gene_name
+up_genes <- ENS_sig |>
+  subset(padj < 0.05 & ENS_sig$log2FoldChange > 0) |>
+  pull(Row.names)
 
-
-# changing into the tibble with gene as rownames 
-which(duplicated(genes$gene_name) == TRUE)
-rownames(genes) <- make.names(genes$gene_name, unique=TRUE)
-genes<-genes %>%  
-  remove_rownames() 
-
-
-#converting into dataframe 
-genes<- as.data.frame(genes)
-
-
-#get a factor with 2 levels--> named numeric vector
-
-GeneList <- genes$padj #this is not correct 
-GeneList<-as.numeric(GeneList) # converting doesnt work as.numeric
-names (GeneList) <- all_genes_names #naming the vector 
-head(GeneList)
-head(geneList)
-#https://www.biostars.org/p/2063/ 
-#https://www.biostars.org/p/350710/ 
-
-
-#https://www.biostars.org/p/471549/
-selection <- function(allScore){ return(allScore < 0.05)} # function that returns TRUE/FALSE for p-values<0.05
-allGO2genes_BP <- annFUN.org(whichOnto="BP", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
-GOdata_BP <- new("topGOdata",
-  ontology="BP",  # you can change this to #NF #CP
-  allGenes=GeneList,
-  annot=annFUN.GO2genes,
-  GO2genes=allGO2genes_BP,
-  geneSel=selection,
-  nodeSize=10) #creating the GOdata object which is then used for the GO analysis
-
-allGO2genes_MF <- annFUN.org(whichOnto="MF", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
-GOdata_MF <- new("topGOdata",
-  ontology="MF",  # you can change this to #NF #CP
-  allGenes=GeneList,
-  annot=annFUN.GO2genes,
-  GO2genes=allGO2genes_MF,
-  geneSel=selection,
-  nodeSize=10)
-
-allGO2genes_CC <- annFUN.org(whichOnto="CC", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
-GOdata_CC <- new("topGOdata",
-  ontology="CC",  # you can change this to #NF #CP
-  allGenes=GeneList,
-  annot=annFUN.GO2genes,
-  GO2genes=allGO2genes_CC,
-  geneSel=selection,
-  nodeSize=10)
-
-#merging the GOdata
-GOdata<-rbind(GOdata_BP,GOdata_MF, GOdata_CC)
-
-#################### writing a loop --> doesnt work
-Onto<- c("BP", "MF", "CC")
-All_genes<-lapply(Onto, annFUN.org, mapping="org.Hs.eg.db")
-### creating a list of all genes for each ontology
-
-#for loop--> not working
-
-GO_list<-list()
-for (i in 1:length(Onto)){
-
-  GO_res <- new("topGOdata",
-  ontology= i,  # you can change this to #NF #CP
-  allGenes=GeneList,
-  annot=annFUN.GO2genes,
-  GO2genes=All_genes[[i]],
-  geneSel=selection,
-  nodeSize=10)
-  GO_list[[i]]<-GO_res
- }
-
-
-# trying out with lapply
-GO_res<- lapply(Onto, new, 
-                allGenes=GeneList, 
-                annot= annFUN.GO2genes, 
-                GO2genes= All_genes, nodeSize=10, geneSel=selection)
-
-
+dn_genes <- ENS_sig |>
+  subset(padj < 0.05 & ENS_sig$log2FoldChange < 0) |>
+  pull(Row.names)
 
 ```
 
@@ -165,47 +89,7 @@ GO_res<- lapply(Onto, new,
 following the topgo vignette 
 [topGO](https://bioconductor.org/packages/devel/bioc/vignettes/topGO/inst/doc/topGO.pdf)
 
-### PCA explorer workflow
 
-```{r}
-#topGOtable with pcaExplorer ##NOT WORKING 
-res<-ENS_sig
-
-# tidying the df
-ENS_sig$Row.names<-gsub("\\..*","",ENS_sig$Row.names)
-rownames(ENS_sig)<-make.names(ENS_sig$Row.names, unique=T)
-
-ENS_res$symbol <- mapIds(org.Hs.eg.db,
-                            keys=row.names(ENS_res),
-                            column="SYMBOL",
-                            keytype="ENSEMBL",
-                            multiVals="first") # P- getting symbols in 
-ENS_res$entrez <- mapIds(org.Hs.eg.db,
-                            keys=row.names(ENS_res),
-                            column="ENTREZID",
-                            keytype="ENSEMBL",
-                            multiVals="first")
-resOrdered <- as.data.frame(ENS_res[order(res$padj),])
-head(resOrdered)
-
-# extract DE genes
-de_df <- resOrdered[resOrdered$padj < .05 & !is.na(resOrdered$padj),]
-de_symbols <- de_df$symbol
-#getting BG genes
-bg_ids <- rownames(dds)[rowSums(counts(dds)) > 0]
-bg_ids<-gsub("\\..*","",bg_ids)
-bg_symbols <- mapIds(org.Hs.eg.db,
-                     keys=bg_ids,
-                     column="SYMBOL",
-                     keytype="ENSEMBL",
-                     multiVals="first")
-GOdata_2<-topGOtable(de_symbols, bg_symbols,
-                            ontology="BP", 
-                            mapping = "org.Hs.eg.db",
-                            geneID = "symbol") 
-  
-
-```
  
 ##Performing an enrichment with Fisher's exact test 
  You can actually use 2 different (F. exact test or Kolmogorov- Smirtnov test with computes enrichmet
