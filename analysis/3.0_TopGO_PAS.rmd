@@ -36,6 +36,9 @@ BiocManager::install("hgu95av2.db")
 
 ENS_sig
  
+# (2) Background genes: genes of results_CtrlMus_Ctrl
+
+ENS_bg
 ```
  
  
@@ -59,13 +62,13 @@ head(topDiffGenes(geneList))
                      annot = annFUN.db, affyLib = affyLib)
 
 ```
+
 # TopGO on the RNAseq results
-## Preparing the input vector
+
 
 The input should be a named vector of DEG genes. Used is ENS_sig object created in
 1.0_metadata_exploration. (changed on 11.7.22)
 
-If using sig.res you need to change the code. 
 
 ```{r puting the genes as named vector}
 
@@ -83,12 +86,29 @@ dn_genes <- ENS_sig |>
   subset(padj < 0.05 & ENS_sig$log2FoldChange < 0) |>
   pull(Row.names)
 
+# Extracting the background genes
+bg_genes <- ENS_bg |>
+  pull(Row.names)
+
 ```
 
 ##topGOtable
+
 following the topgo vignette 
 [topGO](https://bioconductor.org/packages/devel/bioc/vignettes/topGO/inst/doc/topGO.pdf)
 
+```{r}
+Res <- lapply(c("BP", "MF"), function(ontology) {
+  topgode <- topGOtable(DEgenes = genes,
+                        BGgenes = bg_genes,
+                        ontology = ontology,
+                        mapping = "org.Hs.eg.db",
+                        geneID= "ENSEMBL"
+                        )
+  })
+
+Res
+```
 
  
 ##Performing an enrichment with Fisher's exact test 
