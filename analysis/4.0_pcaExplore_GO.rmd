@@ -3,11 +3,21 @@ title: "PCAExpl.rmd"
 output: html_document
 author: Tina Gorsek Sparovec
 date: 10.2.21
+params:
+ data: "../data"
+ results: "../res"
+ lib: "../lib"
+ maxcores: 6
+output:
+ html_notebook:
+ theme: spacelab
+ highlight: textmate
+ toc: yes
+ number_sections: true
+ toc_depth: 3
+ toc_float: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 # using the package pcaExplorer and clusterprofiler
 you need to use the data with the symbol and entrez
 https://bioconductor.statistik.tu-dortmund.de/packages/3.6/bioc/vignettes/clusterProfiler/inst/doc/clusterProfiler.html#dotplot 
