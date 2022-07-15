@@ -20,6 +20,7 @@ output:
 Workflow sources: 
 [Analyzing RNA-seq data with DESeq2](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#countmat)
 
+
 ```{r}
 library(pasilla)
 library(DESeq2)
@@ -80,7 +81,7 @@ anno$cutWeight <- cut(anno$weight,
                       include.lowest = TRUE)
 ###cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
 
-#saveRDS(anno, file= "anno.rds")
+#saveRDS(anno, file = "anno.rds")
 ```
 
 [reference birth weight](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5710996/)
@@ -203,7 +204,11 @@ rld_df <- as.matrix(assay(rld))
 fpm <- fpm(dds)
 
 ## Results of each transformation plotted 
-
+plot_layout <- function(df, x, y, title) {
+  ggplot(df, aes_string(x = x, y = y)) + 
+    geom_point(size = 0.2) +
+    ggtitle(title)
+}
 plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "TG.10", "TG.11", "log2"),
                   plot_layout(as_tibble(assay(rld)), "TG.10", "TG.11", "rld"),
                   plot_layout(as_tibble(assay(vst)), "TG.10", "TG.11", "vst"),
