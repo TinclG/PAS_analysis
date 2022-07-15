@@ -29,6 +29,8 @@ library(IHW)
 library(pcaExplorer)
 library(clusterProfiler)
 library(ReactomePA)
+library(DEGreport)
+library(cowplot)
 ```
 
 
@@ -194,14 +196,18 @@ ENS_sig <- ENS_sig |>
 ```{r}
 
 # Extracting transformed values
-vsd <- vst(dds, blind=FALSE)
+vst <- vst(dds, blind=FALSE)
 rld <- rlog(dds, blind=FALSE)
 head(assay(rld), 3)
-rld_df<-as.matrix(assay(rld))
-#rld_df<-as.data.frame(rld_df)
+rld_df <- as.matrix(assay(rld))
+fpm <- fpm(dds)
 
-### plot the first against the second sample- if they are on the same line 
+## Results of each transformation plotted 
 
+plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "TG.10", "TG.11", "log2"),
+                  plot_layout(as_tibble(assay(rld)), "TG.10", "TG.11", "rld"),
+                  plot_layout(as_tibble(assay(vst)), "TG.10", "TG.11", "vst"),
+                  plot_layout(as_tibble(log2(fpm)), "TG.10", "TG.11", "fpm"))
 ```
 
 ## likelihood test ratio
@@ -213,7 +219,7 @@ rld_df<-as.matrix(assay(rld))
 dds_lrt <- DESeq(dds, 
                  test="LRT", 
                  full = ~ Grav + Para + sectio + Csec + place,
-                 reduced = ~ Grav + Para + sectio + Csec)
+                 reduced = ~1)
 res_LRT <- results(dds_lrt)
 
 # Summary of results
@@ -251,26 +257,32 @@ clustering_sig_genes <- sigLRT_genes %>%
 
 
 # Obtain rlog values for those significant genes
-rdl_mat<-assay(rld)
+rdl_mat <- assay(rld)
 cluster_rlog <- rdl_mat[clustering_sig_genes$gene, ]
 
-#you have to put the anno in factors
-anno$place<-as.factor(anno$place)
+#Rownames of anno should cluster_rlog column namees
+
+anno2 <- anno |> 
+  column_to_rownames("seq_ID")
 
 # determining sets of genes with similar expression patterns across sample groups
 # Use the `degPatterns` function from the 'DEGreport' package to show gene clusters across sample groups
 #BiocManager::install("DEGreport")
-library(DEGreport)
+
 clusters <- degPatterns(cluster_rlog, 
-                        metadata = anno, 
+                        metadata = anno2, 
                         time = "place", 
-                        col=NULL ) 
+                        col = NULL ) 
+
 #??? put the gene names in the df
 head(clusters$df)
 
 cluster_2_genes <- clusters$df %>%
           filter(cluster == 2)
 ```
+
+
+
 
 ## Plot PCA 
 ```{r}
@@ -282,11 +294,13 @@ plotPCA(rld, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
 
 #Extract PCA coordinates
 pcaData <- plotPCA(rld, 
-                   intgroup = c("place", "PA_score"), returnData = TRUE)
+                   intgroup = c("place", "PA_score"), 
+                   returnData = TRUE)
+
 percentVar <- round(100 * attr(pcaData, "percentVar"), digits = 1)
 
 p <- ggplot(pcaData, aes(x = PC1, y = PC2)) +
-  geom_point(aes(fill = "PA_score"),
+  geom_point(aes(fill = PA_score),
               size = 8,
               shape = 21) +
   xlab(paste0("PC1: ", percentVar[1], "% variance")) +
