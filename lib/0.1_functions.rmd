@@ -63,3 +63,11 @@ results_merge(res)
 #resolve the problem
 ```
 
+```{r}
+plot_layout <- function(df, x, y, title) {
+  ggplot(df, aes_string(x = x, y = y)) + 
+    geom_point(size = 0.2) +
+    ggtitle(title)
+}
+```
+
