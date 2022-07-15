@@ -91,7 +91,7 @@ https://bioconductor.org/packages/devel/bioc/vignettes/pcaExplorer/inst/doc/pcaE
 #using res, anno, PAS 
 dds_GO <- DESeq(dds)
 res<- results(dds_GO)
-ENS_res<- merge(as.data.frame(res), PASbackup, by.y="gene_id", by.x= "row.names")
+ENS_res<- merge(as.data.frame(res), KEY, by.y="gene_id", by.x= "row.names")
 ENS_res$Row.names<-gsub("\\..*","",ENS_res$Row.names)
 rownames(ENS_res)<-make.names(ENS_res$Row.names, unique=T) #renaming the rownames
 #names(ENS_res)[names(ENS_res) == "Row.names"] <- "gene_id"
