@@ -1,18 +1,25 @@
 ---
 title: "Gene_anno"
-output: pdf_document
-author: Tina Gorsek Sparovec
+author: "Tina Gorsek Sparovec"
+
 date: 26.1.22
+params:
+ data: "../data"
+ results: "../res"
+ lib: "../lib"
+ maxcores: 6
+output:
+ html_notebook:
+ theme: spacelab
+ highlight: textmate
+ toc: yes
+ number_sections: true
+ toc_depth: 3
+ toc_float: true
 ---
 
 ```{r}
 
- if (!requireNamespace("BiocManager", quietly=TRUE))
-     install.packages("BiocManager")
- BiocManager::install()
-if (!requireNamespace("BiocManager", quietly=TRUE))
-
-#BiocManager::install("topGO")
 library(tidyverse)
  require(topGO)
 require(org.Hs.eg.db)
@@ -20,7 +27,7 @@ library(janitor)
  library(topGO)
 library(ALL)
 library(pcaExplorer)
- BiocManager::install("hgu95av2.db")
+ BiocManager::install(hgu95av2.db)
 data(ALL)
 data(geneList)
 affyLib <- paste(annotation(ALL), "db", sep = ".")
