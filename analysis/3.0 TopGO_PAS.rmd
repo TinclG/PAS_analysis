@@ -19,15 +19,16 @@ output:
 ---
 
 ```{r}
-
 library(tidyverse)
- require(topGO)
 require(org.Hs.eg.db)
 library(janitor)
- library(topGO)
+library(topGO)
 library(ALL)
 library(pcaExplorer)
- BiocManager::install(hgu95av2.db)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+ BiocManager::install("hgu95av2.db")
 data(ALL)
 data(geneList)
 affyLib <- paste(annotation(ALL), "db", sep = ".")
@@ -58,6 +59,7 @@ The input should be a named vector of DEG genes. Used is ENS_sig object created 
 1.0_metadata_exploration. (changed on 11.7.22)
 
 If using sig.res you need to change the code. 
+
 ```{r puting the genes as named vector}
 
 genes<-ENS_sig #trying with ENS_sig instead of sig.genes
@@ -156,20 +158,6 @@ GO_res<- lapply(Onto, new,
                 GO2genes= All_genes, nodeSize=10, geneSel=selection)
 
 
-GOdata <- new("topGOdata",
-  ontology="MF",  # you can change this to #NF #CP
-  allGenes=GeneList,
-  annot=annFUN.GO2genes,
-  GO2genes=All_genes[[2]],
-  geneSel=selection,
-  nodeSize=10)
-
-GOdataMF <- new("topGOdata",
-        ontology = "MF", # use biological process ontology
-        allGenes = GeneList,
-        geneSel=selection,
-    annot = annFUN.GO2genes,
-    GO2genes= All_genes[[2]])
 
 ```
 
@@ -303,10 +291,10 @@ references for comparison with PAS: https://www.frontiersin.org/articles/10.3389
 require(ggplot2)
 library(scales)
 
-allRes$classicFisher<-as.numeric(allRes$classicFisher)
+allRes$classicFisher <- as.numeric(allRes$classicFisher)
 ntop <- 30
 ggdata <- allRes[1:ntop,]
-ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+ggdata$Term <- factor(ggdata$Term, levels = rev(unique(ggdata$Term))) # fixes order, set as unique due to error
 gg1 <- ggplot(ggdata,
   aes(x = Term, y = -log10(classicFisher), size = -log10(classicFisher), fill = -log10(classicFisher))) +
 
@@ -352,7 +340,7 @@ gg1 <- ggplot(ggdata,
 showSigOfNodes(GOdata_MF, score(resultFisher), firstSigNodes = 5, useInfo = 'all')
 ```
 
-How significant GO terms are distributed over GO graph
+## How significant GO terms are distributed over GO graph
 ```{r}
 sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
  cbind(termStat(GOdata_MF, sel.go),
@@ -363,7 +351,7 @@ sel.go <- names(pValue.classic)[pValue.elim < pValue.classic]
  dev.off()
 ```
 
-# Annotation 
+## Annotation 
 nr. 5) in the vignete
 ```{r}
 BPterms <- ls(GOBPTerm)
@@ -375,11 +363,7 @@ head(BPterms)
  a <- genes(GOdata_MF) ## obtain the list of genes
  head(a)
  numGenes(GOdata_MF)
- ### Error in (function (classes, fdef, mtable)  : 
-  #unable to find an inherited method for function 'genes' for signature '"topGOdata"'
- 
- a<-GOdata_MF@allGenes
- head(a)
+
  
  # retrieving a score of specified set of genes
 selGenes <- sample(a, 10)
@@ -453,7 +437,7 @@ age clust by similarity
 #using res, anno, PAS 
 dds_GO <- DESeq(dds)
 res<- results(dds_GO)
-ENS_res<- merge(as.data.frame(res), PASbackup, by.y="gene_name", by.x= "row.names")
+ENS_res<- merge(as.data.frame(res), KEY, by.y="gene_name", by.x= "row.names")
 ENS_res$gene_id<-gsub("\\..*","",ENS_res$gene_id)
 genenames_GO<-mapIds(org.Hs.eg.db,
                      keys=ENS_res$gene_id, 
@@ -500,7 +484,7 @@ topgoDE_GO <- topGOtable(de_symbols, bg_symbols,
                              ontology = "BP",
                              mapping = "org.Hs.eg.db",
                              geneID = "symbol")
-#error NA in rownames
+
 ```
 
  
