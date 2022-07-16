@@ -99,13 +99,14 @@ following the topgo vignette
 
 ```{r}
 Res <- lapply(c("BP", "MF"), function(ontology) {
-  topgode <- topGOtable(DEgenes = genes,
+  topgode <- topGOtable(DEgenes = dn_genes,
                         BGgenes = bg_genes,
                         ontology = ontology,
                         mapping = "org.Hs.eg.db",
                         geneID= "ENSEMBL"
                         )
   })
+
 
 Res
 ```
