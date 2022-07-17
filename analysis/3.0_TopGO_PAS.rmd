@@ -28,17 +28,17 @@ library(pcaExplorer)
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install("hgu95av2.db")
+#BiocManager::install("hgu95av2.db")
 
 # Required data: from notebook 1.0_metadata_exploration
 
 # (1) subtraction/subset of the results_PAS_Ctrl and results_CtrlMus_Ctrl 
 
-ENS_sig
+results_PAS_ctrl
  
 # (2) Background genes: genes of results_CtrlMus_Ctrl
 
-ENS_bg
+results_mus_ctrl
 ```
  
  
@@ -72,35 +72,45 @@ The input should be a named vector of DEG genes. Used is ENS_sig object created 
 
 ```{r puting the genes as named vector}
 
-genes <- ENS_sig |>
+residual <- results_mus_ctrl |>
+  subset(padj < 0.05) |>
   rownames_to_column(var = "gene_id") |>
   pull(gene_id)
 
-head(genes)
+PAS_ctrl <- results_PAS_ctrl |>
+  rownames_to_column(var = "gene_id")|>
+  subset(!gene_id %in% residual)
 
-up_genes <- ENS_sig |>
-  subset(padj < 0.05 & ENS_sig$log2FoldChange > 0) |>
-  pull(Row.names)
+genes <- PAS_ctrl |> 
+  subset(padj < 0.05) |> 
+  pull(gene_id)
 
-dn_genes <- ENS_sig |>
-  subset(padj < 0.05 & ENS_sig$log2FoldChange < 0) |>
-  pull(Row.names)
+up_genes <- PAS_ctrl |>
+  subset(padj < 0.05 & PAS_ctrl$log2FoldChange > 0) |>
+  pull(gene_id)
 
-# Extracting the background genes
-bg_genes <- ENS_bg |>
-  pull(Row.names)
+dn_genes <- PAS_ctrl |>
+  subset(padj < 0.05 & PAS_ctrl$log2FoldChange < 0) |>
+  pull(gene_id)
+
+#Extracting the all genes
+
+all_genes <- PAS_ctrl |>
+  pull(gene_id)
+
+
+
 
 ```
 
-##topGOtable
+##topGotable on Biological pathways ("BF") and Molecular function ("MF")
 
-following the topgo vignette 
-[topGO](https://bioconductor.org/packages/devel/bioc/vignettes/topGO/inst/doc/topGO.pdf)
+Extract functional terms enriched in the DE genes, based on topGO
 
 ```{r}
 Res <- lapply(c("BP", "MF"), function(ontology) {
   topgode <- topGOtable(DEgenes = genes,
-                        BGgenes = bg_genes,
+                        BGgenes = all_genes,
                         ontology = ontology,
                         mapping = "org.Hs.eg.db",
                         geneID= "ENSEMBL"
@@ -109,32 +119,24 @@ Res <- lapply(c("BP", "MF"), function(ontology) {
 
 
 Res
+
 ```
 
  
-##Performing an enrichment with Fisher's exact test 
- You can actually use 2 different (F. exact test or Kolmogorov- Smirtnov test with computes enrichmet
- based on the gene count)
+## Adding a column with ENTREZ ID 
  
-```{r}
-#performing an enrichment 
+```{r ENTREZ}
+PAS_ctrl$ENTREZID <- mapIds(org.Hs.eg.db,
+                       keys=PAS_ctrl$gene_id, 
+                        column="ENTREZID",
+                        keytype="ENSEMBL",
+                        multiVals="first")
 
-resultFisher <- runTest(GOdata_MF, algorithm = "classic", statistic = "fisher")
-resultFisher
-```
- testing the enrichment using KS test, with classic and elim method
- 
-```{r}
-resultKS <- runTest(GOdata_MF, algorithm = "classic", statistic = "ks")
-resultKS.elim <- runTest(GOdata_MF, algorithm = "elim", statistic = "ks", na.rm=T)
-##### error not enough y data
-## could be the problem with NA in ENS_sig
-
-#### Solution in other vignette (link below), to get the elim results
-test.stat <- new("elimCount", testStatistic = GOFisherTest,
-                 name = "Fisher test", cutOff = 0.01)
-resultElim <- getSigGroups(GOdata_MF, test.stat)
-#http://compdiag.molgen.mpg.de/ngfn/docs/2007/sep/topGO_Exercises.pdf 
+universe <- unique(PAS_ctrl$ENTREZID)
+genes <- PAS_ctrl |>
+  subset(padj < 0.05) |> 
+  pull(ENTREZID) |> 
+  unique()
 ```
 
 ## Analysis of results
@@ -149,7 +151,7 @@ are lower bounded by the p-values returned by the later method
 
 ```{r}
 
-allRes <- GenTable(GOdata_MF, 
+allRes <- GenTable(GOdata, 
                   classicFisher = resultFisher,
                   classicKS = resultKS, 
                   elimKS = resultElim, #with elim method from the second elim calculation (see solution)
@@ -161,7 +163,7 @@ allRes #depends on the threshold that you use
 ## Accessing p-values from the GO object
  pValue.classic <- score(resultKS)
  pValue.elim <- score(resultElim)[names(pValue.classic)]
- gstat <- termStat(GOdata_MF, names(pValue.classic))
+ gstat <- termStat(GOdata, names(pValue.classic))
  gSize <- gstat$Annotated / max(gstat$Annotated) * 4
  colMap <- function(x) {
   .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
