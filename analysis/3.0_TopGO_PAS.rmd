@@ -99,7 +99,7 @@ following the topgo vignette
 
 ```{r}
 Res <- lapply(c("BP", "MF"), function(ontology) {
-  topgode <- topGOtable(DEgenes = dn_genes,
+  topgode <- topGOtable(DEgenes = genes,
                         BGgenes = bg_genes,
                         ontology = ontology,
                         mapping = "org.Hs.eg.db",

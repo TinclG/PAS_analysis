@@ -190,7 +190,7 @@ ENS_bg <- merge(as.data.frame(results_mus_ctrl),
 
 #excluding the rows from the ENS_sig, that appear in the ENS_bg and ENS_sig
 ENS_sig <- ENS_sig |>
-  filter(!ENS_sig$Row.names %in% ENS_bg$Row.names)
+  subset(!ENS_sig$Row.names %in% ENS_bg$Row.names)
 
 ```
 
