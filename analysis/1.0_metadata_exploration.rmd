@@ -161,6 +161,7 @@ results_mus_ctrl<-results(dds,
                           filterFun= ihw, 
                           contrast = c("place", "CtrlMus", "Ctrl")) # reference level comes last!
 results_mus_ctrl<- as.data.frame(results_mus_ctrl)
+results_mus_ctrl <-results_mus_ctrl[order(results_mus_ctrl$padj),]
 results_mus_ctrl<- results_mus_ctrl %>%
   subset(padj<0.05)
 ```
@@ -187,10 +188,10 @@ ENS_bg <- merge(as.data.frame(results_mus_ctrl),
                 KEY, 
                 by.y="gene_id", 
                 by.x= "row.names")
+residual <- ENS_bg |>
+  pull(Row.names)
 
-#excluding the rows from the ENS_sig, that appear in the ENS_bg and ENS_sig
-ENS_sig <- ENS_sig |>
-  subset(!ENS_sig$Row.names %in% ENS_bg$Row.names)
+
 
 ```
 
