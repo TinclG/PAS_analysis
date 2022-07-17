@@ -38,6 +38,7 @@ genes <- dat |> subset(padj < 0.05) |> pull(gene_id)
 up_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange > 0) |> pull(gene_id)
 dn_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange < 0) |> pull(gene_id)
 all_genes <- dat |> pull(gene_id)
+
 ```
 
 ## (2) Run TopGO with Biological (BP) process and Molecular function (MF)
