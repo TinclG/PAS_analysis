@@ -44,7 +44,7 @@ anno <- read.csv2(paste0(params$data,"/metadata_PASeq.csv"),
                   sep= ";")
 
 anno <- anno |>
-  subset(seq_ID != "AK19_TG.8") |> #removing an outlier 
+  filter(seq_ID != "AK19_TG.8") |> #removing an outlier 
   mutate(seq_ID = gsub("AK19_", "", seq_ID)) |> #renaming the seq_ID
   relocate(c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")) |>
   #change column order/ select columns
