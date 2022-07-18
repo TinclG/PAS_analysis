@@ -168,15 +168,12 @@ Reactome uses hypergeometric model (one sided version of Fishers exact test) to 
 R_PA<-enrichPathway(gene = genes, 
                     organism = "human",
                     universe = universe,
-                    pvalueCutoff = 0.05, 
+                    pvalueCutoff = 0.2, #had to change the pvaluecutoff because there was nothing to plot
                     readable = T)
 
 as_tibble(R_PA@result)
 
-viewPathway("PAS invasion vs. control", 
-            readable = TRUE, 
-            foldChange = genes) 
-#Error: unable to find an inherited method for function ‘convertIdentifiers’ for signature ‘"NULL"’
+
 ```
 ## Wiki pathway
 
