@@ -31,14 +31,31 @@ library(genefilter)
 library(RColorBrewer)
 library(vsn)
 library(ggrepel)
+devtools::install_github("kevinsblake/NatParksPalettes", force = TRUE)
+library(NatParksPalettes)
+
+# Required data:
+
+# (1) rld normalisation
+
+rld
+
+# (2) KEY - df of df genes with gene_name and gene_id
+
+KEY
+
+# (3) dds object, created in the 1.0_metadata_exploration
+
+dds
+
+
 ```
 
 
 
 ```{r normalisation}
-vst <- vst(dds, blind=FALSE)
 rld <- rlog(dds, blind=FALSE)
-ntd <- normTransform(dds)
+
 ```
 
 ## Sample distances
@@ -60,51 +77,67 @@ pheatmap(sampleDistMatrix,
 
 ## Gene clustering/heatmap with dendogram
 
-
+[heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
 ```{r}
-topVarGenes <- head(order(-rowVars(assay(rld))),50) |>
-  as.data.frame() |>
-  rownames_to_column(row.names)
-
-
-
+topVarGenes <- head(order(-rowVars(assay(rld))),50) 
 
 mat <- assay(rld)[ topVarGenes, ]
 mat <- mat - rowMeans(mat)
-#merging with KEY to get the gene_name 
-mat <- merge(mat,
-                       KEY, 
-                 by.y="gene_id", 
-                 by.x= "row.names")
 mat <- mat |>
   as.data.frame() |>
-  remove_rownames() |>
-  column_to_rownames("gene_name") 
+  rownames_to_column(var= "Ensembl")
+
+# merging with KEY to get the gene_name 
+mat <- merge(mat,
+             KEY, 
+             by.y="gene_id", 
+             by.x= "Ensembl")
+
+# removing the duplicated genes
+mat <- mat[!duplicated(mat$gene_name),]
+mat <- mat |>
+  select(-Ensembl) |>
+  remove_rownames()|>
+  column_to_rownames(var= "gene_name")
+
+
+# annotate the heatmap
 df <- as.data.frame(colData(rld)[,c("place", "patient")])
-pheatmap(mat, annotation_col=df)
+
+
+
+pheatmap(mat, 
+         annotation_col=df)
+         #scale = "row",#scale = "row" okits Z-scores, rather then normalized count values
+         
+
+
+
 ```
 
-# vulcano plots
+## vulcano plots
 
 
 ```{r}
-normalized_counts <- counts(dds, normalized=T) %>% 
-                     data.frame() %>%
-                     rownames_to_column(var="gene") %>%
+
+normalized_counts <- counts(dds, normalized=T) |>
+                     data.frame() |>
+                     rownames_to_column(var="gene") |>
                      as_tibble()
 # assigning the genes to the column 
 summary(results_PAS_ctrl, alpha = 0.05)
+
 # creating a tibble from results 
-results_PAS_ctrl2 <- results_PAS_ctrl%>%
-   data.frame() %>% 
-   rownames_to_column(var="gene")%>%
+results_PAS_ctrl2 <- results_PAS_ctrl|>
+   data.frame() |>
+   rownames_to_column(var="gene") |>
    as_tibble()
    View()
    
    
-results_PAS_ctrl2 <- results_PAS_ctrl2 %>%
-  mutate(threshold_OE = padj < 0.05 & abs(log2FoldChange) >= 0.58) %>%
-  arrange(padj) %>%
+results_PAS_ctrl2 <- results_PAS_ctrl2 |>
+  mutate(threshold_OE = padj < 0.05 & abs(log2FoldChange) >= 0.58) |>
+  arrange(padj) |>
   mutate(genelabels="")
 
 ggplot(results_PAS_ctrl2) +
