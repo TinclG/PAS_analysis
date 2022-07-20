@@ -184,5 +184,7 @@ p2 <- emapplot(cluster_comp, legend_n=2)
 p3 <- emapplot(cluster_comp, pie="count")
 p4 <- emapplot(cluster_comp, pie="count", cex_category=1.5, layout="kk")
 cowplot::plot_grid(p1, p2, p3, p4, ncol=2, labels=LETTERS[1:4])
+
+
 ```
 
