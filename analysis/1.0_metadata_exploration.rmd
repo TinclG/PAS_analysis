@@ -231,7 +231,7 @@ plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "
 dds_lrt <- DESeq(dds, 
                  test="LRT", 
                  full = ~ Grav + Para + sectio + Csec + place,
-                 reduced = ~1)
+                 reduced = ~ Grav + Para + sectio + Csec )
 res_LRT <- results(dds_lrt)
 
 # Summary of results
@@ -240,18 +240,16 @@ sum(res_LRT$padj < 0.01, na.rm =TRUE)
 sum(res_LRT$padj < 0.05, na.rm =TRUE)
 
 # Create a tibble for LRT results
-res_LRT_tb <- res_LRT %>%
-  data.frame() %>%
-  rownames_to_column(var="gene") %>% 
-  as_tibble()
+res_LRT_tb <- res_LRT |>
+  data.frame() |>
+  rownames_to_column(var="gene") |>
+  as_tibble() |>
+  filter(padj<0.05) #subsetting for the significant genes
 
-# Subset to return genes with padj < 0.05
-sigLRT_genes <- res_LRT_tb %>% 
-  dplyr::filter(padj < 0.05)
 
-# Get number of significant genes
+# Get number of significant genes and compared it to the wald test 
 nrow(sigLRT_genes)
-
+nrow(ENS_sig)
 ```
 
 # Clustering the genes
@@ -262,9 +260,9 @@ Cluster 2: genes that are upregulated in ctrl vs. PAS
 
 
 ```{r}
- #Subset results for faster cluster finding (for classroom demo purposes)
-clustering_sig_genes <- sigLRT_genes %>%
-  arrange(padj) %>%
+ #Subset results for faster cluster finding 
+clustering_sig_genes <- res_LRT_tb |>
+  arrange(padj) |>
   head(n=1000)
 
 
@@ -291,6 +289,25 @@ head(clusters$df)
 
 cluster_2_genes <- clusters$df %>%
           filter(cluster == 2)
+
+
+#degPatterns using rld results
+rld <-rld[rownames(rld) %in% rownames(results_PAS_ctrl)]
+rld2 <- as_tibble(assay(rld[rownames(rld) %in% rownames(results_PAS_ctrl)])) |>
+  mutate(id = rownames(rld)) |>
+  column_to_rownames(var = "id")
+
+clusters <- degPatterns(rld2, 
+                        metadata = anno |> 
+                          column_to_rownames(var = "seq_ID"), 
+                        time = "place", 
+                        col = NULL)
+
+clusters$df
+clusters$plot
+
+
+
 ```
 
 
