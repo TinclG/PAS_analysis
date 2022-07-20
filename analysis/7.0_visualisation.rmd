@@ -164,6 +164,17 @@ ggplot(results_PAS_ctrl2, aes(x = log2FoldChange, y = -log10(padj))) +
 
 ```
 
+## Biological theme comparison based on clusters 
 
+```{r}
+#### move this to the top
 
+# For this analysis you need "genes", a vector of ENTREZID DEG 
+genes
+
+cluster_comp <- compareCluster(genes,
+                               fun = "enrichKEGG",
+                               organism = 'hsa',
+                               pvalueCutoff = 0.05)
+```
 
