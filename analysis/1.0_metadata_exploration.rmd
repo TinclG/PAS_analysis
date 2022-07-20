@@ -333,4 +333,3 @@ p <- ggplot(pcaData,
   geom_point(aes(shape = PA_score), size = 5) +
   labs(shape = "PA_score", colour = "place", size = "PA_score")
 ```
-
