@@ -287,8 +287,6 @@ clusters <- degPatterns(cluster_rlog,
 #??? put the gene names in the df
 head(clusters$df)
 
-cluster_2_genes <- clusters$df %>%
-          filter(cluster == 2)
 
 
 #degPatterns using rld results
@@ -306,7 +304,13 @@ clusters <- degPatterns(rld2,
 clusters$df
 clusters$plot
 
+cluster_3_genes <- clusters$df %>%
+          filter(cluster == 3)
 
+plotGOgraph(
+cluster_3_genes,
+firstSigNodes = 10
+)
 
 ```
 
