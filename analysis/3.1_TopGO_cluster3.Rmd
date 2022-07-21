@@ -38,7 +38,7 @@ library(enrichplot)
 
 # (1) subtraction/subset of the genes from clusters 
 
-cluster_3_genes
+c2
 
 # (2) list of gene IDs from result_PAS_ctrl and results_MusCtrl_Ctrl
 
@@ -53,7 +53,7 @@ results_mus_ctrl
 
 ```{r}
 # Merging the df cluster_3_genes with gene_ids
-c3 <- merge(as.data.frame(cluster_3_genes), 
+c2 <- merge(as.data.frame(cluster_4_genes), 
                  KEY, 
                  by.y="gene_id", 
                  by.x= "genes")
@@ -65,17 +65,17 @@ residual <- results_mus_ctrl |>
 
 PAS_ctrl <- results_PAS_ctrl |>
   rownames_to_column(var = "gene_id")|>
-  subset(!gene_id %in% residual)
+  subset(!gene_id %in% residual) 
 
 all_genes <- PAS_ctrl |>
   pull(gene_id)
 
 #Extracting the gene_names from cluster_3_genes
 
-genes <- c3 |>
+genes <- c2 |>
   pull(gene_name)
 
-Genes <- c3 |>
+Genes <- c2 |>
   pull(genes)
 
 
@@ -88,7 +88,7 @@ Extract functional terms enriched in the DE genes, based on topGO
 
 ```{r}
 Res <- lapply(c("BP", "MF"), function(ontology) {
-  topgode <- topGOtable(DEgenes = genes,
+  topgode <- topGOtable(DEgenes = Genes,
                         BGgenes = all_genes,
                         ontology = ontology,
                         mapping = "org.Hs.eg.db",
@@ -106,14 +106,14 @@ Res
  
  
 ```{r ENTREZ}
-c3$ENTREZID <- mapIds(org.Hs.eg.db,
-                       keys=c3$genes, 
+c2$ENTREZID <- mapIds(org.Hs.eg.db,
+                       keys=c2$genes, 
                         column="ENTREZID",
                         keytype="ENSEMBL",
                         multiVals="first")
 
 universe <- unique(PAS_ctrl$ENTREZID)
-genes <- c3 |>
+genes <- c2 |>
   pull(ENTREZID) |> 
   unique()
 ```
@@ -204,7 +204,7 @@ GOdata <- new("topGOdata",
 Res <- runTest(GOdata, 
                  algorithm = algorithm, 
                  statistic = statistic)
-
+Res
 # Build result table of all DEG
 tab <- GenTable(GOdata, Pval = Res, topNodes = 20)
 
