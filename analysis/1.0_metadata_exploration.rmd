@@ -173,6 +173,7 @@ results_mus_ctrl<- results_mus_ctrl %>%
 ## pas vs mus
 
 ```{r}
+
 results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "CtrlMus"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
 results_mus_PAS<- results_mus_PAS %>%
@@ -220,6 +221,7 @@ plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "
                   plot_layout(as_tibble(assay(rld)), "TG.10", "TG.11", "rld"),
                   plot_layout(as_tibble(assay(vst)), "TG.10", "TG.11", "vst"),
                   plot_layout(as_tibble(log2(fpm)), "TG.10", "TG.11", "fpm"))
+plot(plot)
 ```
 
 ## likelihood test ratio
@@ -248,7 +250,7 @@ res_LRT_tb <- res_LRT |>
 
 
 # Get number of significant genes and compared it to the wald test 
-nrow(sigLRT_genes)
+nrow(res_LRT_tb)
 nrow(ENS_sig)
 ```
 
@@ -284,18 +286,16 @@ clusters <- degPatterns(cluster_rlog,
                         time = "place", 
                         col = NULL ) 
 
-#??? put the gene names in the df
-head(clusters$df)
 
 
 
 #degPatterns using rld results
-rld <-rld[rownames(rld) %in% rownames(results_PAS_ctrl)]
-rld2 <- as_tibble(assay(rld[rownames(rld) %in% rownames(results_PAS_ctrl)])) |>
-  mutate(id = rownames(rld)) |>
+rld2 <-rld[rownames(rld) %in% rownames(results_PAS_ctrl|> subset(padj < 0.05))]
+rld3 <- as_tibble(assay(rld2[rownames(rld2) %in% rownames(results_PAS_ctrl|> subset(padj < 0.05))])) |>
+  mutate(id = rownames(rld2)) |>
   column_to_rownames(var = "id")
 
-clusters <- degPatterns(rld2, 
+clusters <- degPatterns(rld3, 
                         metadata = anno |> 
                           column_to_rownames(var = "seq_ID"), 
                         time = "place", 
@@ -306,11 +306,6 @@ clusters$plot
 
 cluster_3_genes <- clusters$df %>%
           filter(cluster == 3)
-
-plotGOgraph(
-cluster_3_genes,
-firstSigNodes = 10
-)
 
 ```
 
