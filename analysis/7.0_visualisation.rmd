@@ -31,7 +31,7 @@ library(genefilter)
 library(RColorBrewer)
 library(vsn)
 library(ggrepel)
-devtools::install_github("kevinsblake/NatParksPalettes", force = TRUE)
+#devtools::install_github("kevinsblake/NatParksPalettes", force = TRUE)
 library(NatParksPalettes)
 
 # Required data:
@@ -108,7 +108,7 @@ df <- as.data.frame(colData(rld)[,c("place", "patient")])
 
 pheatmap(mat, 
          annotation_col=df)
-         #scale = "row",#scale = "row" okits Z-scores, rather then normalized count values
+         #scale = "row")#scale = "row" okits Z-scores, rather then normalized count values
          
 
 
