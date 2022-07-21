@@ -205,11 +205,11 @@ Res <- runTest(GOdata,
                  algorithm = algorithm, 
                  statistic = statistic)
 
-# Build up result table
+# Build result table of all DEG
 tab <- GenTable(GOdata, Pval = Res, topNodes = 20)
 
 # Update table with full GO term name
-# Update up table 
+# Update table 
 tab$Term <- sapply(tab$"GO.ID", 
                       function(go) Term(GO.db::GOTERM[[go]]))
 sigGenes <- sigGenes(GOdata)
