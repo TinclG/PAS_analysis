@@ -304,8 +304,8 @@ clusters <- degPatterns(rld3,
 clusters$df
 clusters$plot
 
-cluster_3_genes <- clusters$df %>%
-          filter(cluster == 3)
+cluster_4_genes <- clusters$df %>%
+          filter(cluster == 4)
 
 ```
 
