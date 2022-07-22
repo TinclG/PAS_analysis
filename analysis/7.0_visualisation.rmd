@@ -170,8 +170,32 @@ ggplot(results_PAS_ctrl2, aes(x = log2FoldChange, y = -log10(padj))) +
 #### move this to the top
 
 # For this analysis you need a list of genes created with degPatterns, 1.0_metadata_exploratioj
-clusters
+
+clust_df <- clusters$df
 clusters$plot
+
+#adding a column with ENTREZID
+clust_df$ENTREZID <- mapIds(org.Hs.eg.db,
+                       keys=clust_df$genes, 
+                        column="ENTREZID",
+                        keytype="ENSEMBL",
+                        multiVals="first")
+
+
+#extracting a list with genes of each cluster
+clust <- c(1:4)
+list<-list()
+for(i in 1:length(clust)) {
+c<- clust_df |>
+  filter(cluster == i) |>
+  pull(ENTREZID)
+  
+list[[i]]<- c
+}
+
+list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
+
+#comparing clusters
 
 cluster_comp <- compareCluster(clusters,
                                fun = "enrichKEGG",
