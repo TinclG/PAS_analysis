@@ -290,6 +290,7 @@ clusters <- degPatterns(cluster_rlog,
 
 
 #degPatterns using rld results
+
 rld2 <-rld[rownames(rld) %in% rownames(results_PAS_ctrl|> subset(padj < 0.05))]
 rld3 <- as_tibble(assay(rld2[rownames(rld2) %in% rownames(results_PAS_ctrl|> subset(padj < 0.05))])) |>
   mutate(id = rownames(rld2)) |>
