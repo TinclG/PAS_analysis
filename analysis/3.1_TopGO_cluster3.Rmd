@@ -2,21 +2,21 @@
 title: "3.1_TopGO_clusters"
 author: "Tina Gorsek"
 date: '2022-07-20'
-
-
-params:
- data: "../data"
- results: "../res"
- lib: "../lib"
- maxcores: 6
 output:
- html_notebook:
- theme: spacelab
- highlight: textmate
- toc: yes
- number_sections: true
- toc_depth: 3
- toc_float: true
+  html_document:
+    df_print: paged
+  theme: spacelab
+  highlight: textmate
+  toc: yes
+  number_sections: yes
+  toc_depth: 3
+  toc_float: yes
+  html_notebook: null
+params:
+  data: ../data
+  results: ../res
+  lib: ../lib
+  maxcores: 6
 ---
 
 
@@ -32,18 +32,19 @@ if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 library(enrichplot)
 
+
 #BiocManager::install("hgu95av2.db")
 
 # Required data: from notebook 1.0_metadata_exploration
 
 # (1) subtraction/subset of the genes from clusters 
 
-c2
+#*cluster_4_genes
 
 # (2) list of gene IDs from result_PAS_ctrl and results_MusCtrl_Ctrl
 
-results_PAS_ctrl
-results_mus_ctrl
+#*results_PAS_ctrl
+#*results_mus_ctrl
 
 
 
@@ -52,7 +53,7 @@ results_mus_ctrl
 ##Preparing the input data
 
 ```{r}
-# Merging the df cluster_3_genes with gene_ids
+#Merging the df cluster_3_genes with gene_ids
 c2 <- merge(as.data.frame(cluster_4_genes), 
                  KEY, 
                  by.y="gene_id", 
@@ -106,11 +107,15 @@ Res
  
  
 ```{r ENTREZ}
-c2$ENTREZID <- mapIds(org.Hs.eg.db,
-                       keys=c2$genes, 
-                        column="ENTREZID",
-                        keytype="ENSEMBL",
-                        multiVals="first")
+ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(c2$genes),
+                                           keytype = "ENSEMBL",
+                                           columns = c("ENTREZID"))
+c2 <- c2 |> inner_join(ensembl_to_entrez, by = c("genes" = "ENSEMBL"))
+#c2$ENTREZID <- mapIds(org.Hs.eg.db,
+                       #keys=c2$genes, 
+                        #column="ENTREZID",
+                        #keytype="ENSEMBL",
+                        #multiVals="first")
 
 universe <- unique(PAS_ctrl$ENTREZID)
 genes <- c2 |>
@@ -131,10 +136,12 @@ Kegg <- enrichKEGG(gene = genes,
                    organism = 'hsa',
                    universe = universe,
                    pvalueCutoff = 0.05)
-head(Kegg)
 
-#visualisation
-browseKEGG(Kegg, 'hsa04933')
+
+summary_Kegg <- slot(Kegg, "result") %>%
+  as_tibble() 
+
+knitr::kable(summary_Kegg)
 ```
 
 ## Reactome enrich analysis
@@ -205,6 +212,7 @@ Res <- runTest(GOdata,
                  algorithm = algorithm, 
                  statistic = statistic)
 Res
+
 # Build result table of all DEG
 tab <- GenTable(GOdata, Pval = Res, topNodes = 20)
 
@@ -216,7 +224,7 @@ sigGenes <- sigGenes(GOdata)
 
 # Retrieve gene symbols for each GO from the test result
 AnnoList <- lapply(tab$"GO.ID", 
-                      function(x) as.character(list(genesInTerm(object = GOdata, whichGO = x))))
+                      function(x) as.character(unlist(genesInTerm(object = GOdata, whichGO = x))))
 SigList <- lapply(AnnoList, function(x) intersect(x, sigGenes))
 
 #Coerce gene list to a comma-separated vector
@@ -234,5 +242,6 @@ mutate(R_PA, qscore = -log(p.adjust, base = 10)) |>
 #Dot plot 
 dotplot(R_PA, showCategory=30) + 
   ggtitle("dotplot for ORA")
+
 
 ```
