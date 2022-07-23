@@ -40,19 +40,19 @@ if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("variancePartition")
-library("variancePartition")
-library("ggplot2")
-library("limma")
-library("BiocParallel")
-library("DESeq2")
-library("tidyverse")
+library(variancePartition)
+library(limma)
+library(BiocParallel)
+library(DESeq2)
+library(tidyverse)
+
 #data used sig.res and anno metadata
 ```
 
 ```{r}
 #example
 data(varPartData)
-form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)
+form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)a
 varPart<- fitExtractVarPartModel( geneExpr, form, info)
 vp<-sortCols(varPart)
 plotPercentBars(vp[1:10,])
