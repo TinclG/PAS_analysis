@@ -46,8 +46,12 @@ library(BiocParallel)
 library(DESeq2)
 library(tidyverse)
 
-#data used sig.res and anno metadata
+#data are sourced from analysis/1.0 metadata
+
+sig.res 
+anno 
 ```
+## From the vignette
 
 ```{r}
 #example
@@ -59,18 +63,20 @@ plotPercentBars(vp[1:10,])
 plotVarPart(vp)
 ```
 
+## Variance partition PAS
+
 ```{r}
 dds<-estimateSizeFactors(dds) # tries to get rid of the variations between samples
-expr<- rowSums(fpm(dds)>1) >= 0.5* ncol(dds)
+expr <- rowSums(fpm(dds)>1) >= 0.5* ncol(dds)
 
 #transformation, plus filter for the genes that pass the 0.05
 quantlog<-log2(fpm(dds)[expr,] +1)
 
 form <- ~(weight+ Grav + Para + sectio + Csec+ place) #which one is categorical, fixed or continuous
 #uses rld table results for input
-varPart_pas<- fitExtractVarPartModel(quantlog,form, anno) #problem
+varPart_pas <- fitExtractVarPartModel(quantlog,form, anno) #problem
 plotVarPart(varPart_pas)
-?fitExtractVarPartModel
+
 ```
 ```{r}
 # plot of varienace fractions for a subset of genes
@@ -81,7 +87,7 @@ How to get the genes not the ensemble ID?
 
 ```{r}
 sortCols(varPart_pas)
-plotVarPart( sortCols( varPart_pas ) )
+plotVarPart(sortCols(varPart_pas ) )
 ```
 
 
