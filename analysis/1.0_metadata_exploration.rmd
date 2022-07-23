@@ -136,6 +136,7 @@ dds<-dds[keep,]
 ## PAS vs ctrl
 
 note! for levels, the R will choose based on alphabetical order! careful 
+*contrast* specifies the comparison between the 2 levels of a variable
 
 ```{r}
 
@@ -156,6 +157,10 @@ sig.res <- results_PAS_ctrl|>  # using just the signif DEG
 
 
 ```
+Results:
+*baseMean* average of normalised count values divided by size factors
+*log2FoldChange* effect size estimate - how much of the gene's expression is different between the conditions
+*pajd* - we consider 10% of false positive acceptable (FDR)
 
 ## mus vs. ctrl
 
@@ -202,6 +207,9 @@ residual <- ENS_bg |>
 
 ### nCount data transformation
 
+*regularized-logarithm transformation*, or rlog for short. For genes with high counts, the rlog transformation differs not much from an ordinary log2 transformation. For genes with lower counts, however, the values are shrunken towards the genes’ averages across all samples. Using an empirical Bayesian prior in the form of a ridge penalty, this is done such that the rlog-transformed data are approximately homoskedastic.
+[source](http://www.sthda.com/english/wiki/rna-seq-differential-expression-work-flow-using-deseq2)
+
 ```{r}
 
 # Extracting transformed values
@@ -223,8 +231,11 @@ plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "
                   plot_layout(as_tibble(log2(fpm)), "TG.10", "TG.11", "fpm"))
 plot(plot)
 ```
+Results: we want to have a transformation that gives us the least outliers. In this case rlog transformation if the best choice. Rlog compresses the differences for genes.
 
 ## likelihood test ratio
+
+Instead of rlog transformation we could usse likelihood test ratio. This is more suitable when we have more time points
 
 [Likelihood test ratio workflow](https://hbctraining.github.io/DGE_workshop_salmon/lessons/08_DGE_LRT.html)
 
@@ -258,7 +269,8 @@ nrow(ENS_sig)
 
 Aim: To identify gene clusters exhibiting particular patterns
 Results: 
-Cluster 2: genes that are upregulated in ctrl vs. PAS
+Cluster 3: genes that are upregulated in ctrl vs. PAS
+Cluster 4: genes that are downregulated in ctrl vs. PAS
 
 
 ```{r}
