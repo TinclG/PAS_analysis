@@ -45,3 +45,10 @@ PAS <- PAS |>
   mutate_at(vars(-("gene_id")), ceiling) |> #rounding the counts
   rename_with(~str_replace(., pattern = "AK19_", replacement = "")) |>
   column_to_rownames(var = "gene_id")
+
+#------------Removing NA from rows----------------------------
+
+df %>% filter(!is.na(col1)) 
+# or 
+PAS_immune <- PAS_immune |>
+  drop_na()
