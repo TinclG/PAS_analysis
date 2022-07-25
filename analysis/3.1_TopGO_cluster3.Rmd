@@ -54,7 +54,7 @@ library(enrichplot)
 
 ```{r}
 #Merging the df cluster_3_genes with gene_ids
-c2 <- merge(as.data.frame(cluster_4_genes), 
+c2 <- merge(as.data.frame(cluster_2_genes), 
                  KEY, 
                  by.y="gene_id", 
                  by.x= "genes")
@@ -141,7 +141,8 @@ Kegg <- enrichKEGG(gene = genes,
 summary_Kegg <- slot(Kegg, "result") %>%
   as_tibble() 
 
-knitr::kable(summary_Kegg)
+#write.csv(summary_Kegg, "KEGG_PAS_Ctrl.csv")
+
 ```
 
 ## Reactome enrich analysis
@@ -157,7 +158,7 @@ R_PA<-enrichPathway(gene = genes,
 
 as_tibble(R_PA@result)
 
-
+#write.csv(R_PA@result, "Reactome_PAS_Ctrl.csv")
 ```
 ## Wiki pathway
 
@@ -171,6 +172,7 @@ Wiki_pathway <- enrichWP(gene = genes,
 
 as_tibble(Wiki_pathway@result)
 ```
+[Differences between KEGG, Reactome and Wiki Pathway](https://www.frontiersin.org/articles/10.3389/fgene.2019.01203/full)
 ```{r}
 ontology <- "BP" #(Biological Pathway)
 #ontology <- "CC" #(Cellular Component)
@@ -234,12 +236,12 @@ cbind(head(tab$Genes, 5))
 ```
 
 ```{r}
-#Bar plot
+#Bar plot reactome results
 barplot(R_PA, showCategory = 20)
 mutate(R_PA, qscore = -log(p.adjust, base = 10)) |>
     barplot(x="qscore")
 
-#Dot plot 
+#Dot plot reactome results
 dotplot(R_PA, showCategory=30) + 
   ggtitle("dotplot for ORA")
 
