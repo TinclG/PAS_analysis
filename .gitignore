@@ -12,3 +12,4 @@ res/
 .RData
 .DS_Store
 *.html
+*.csv
