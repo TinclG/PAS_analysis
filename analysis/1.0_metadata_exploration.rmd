@@ -293,7 +293,8 @@ clusters$plot
 
 cluster_4_genes <- clusters$df %>%
           filter(cluster == 4)
-
+cluster_2_genes <- clusters$df %>%
+          filter(cluster == 2)
 ```
 
 
