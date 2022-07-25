@@ -149,15 +149,14 @@ KEGG is a collection of manually drawn pathway maps representing molecular inter
 Over Representation Analysis (ORA) (Boyle et al. 2004) is a widely used approach to determine whether known biological functions or processes are over-represented (= enriched) in an experimentally-derived gene list, e.g. a list of differentially expressed genes (DEGs).
 
 ```{r}
-#why not the GO enrichment analysis?
+
 Kegg <- enrichKEGG(gene = genes,
                    organism = 'hsa',
                    universe = universe,
                    pvalueCutoff = 0.05)
 head(Kegg)
 
-#visualisation
-browseKEGG(Kegg, 'hsa04933')
+write.csv(Kegg, "Kegg_PAS_Ctrl_all.csv")
 ```
 
 ## Reactome enrich analysis
@@ -173,7 +172,7 @@ R_PA<-enrichPathway(gene = genes,
 
 as_tibble(R_PA@result)
 
-
+write.csv(R_PA@result, "Reactome_PAS_Ctrl_all.csv")
 ```
 ## Wiki pathway
 
