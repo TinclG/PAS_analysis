@@ -269,37 +269,11 @@ nrow(ENS_sig)
 
 Aim: To identify gene clusters exhibiting particular patterns
 Results: 
-Cluster 3: genes that are upregulated in ctrl vs. PAS
-Cluster 4: genes that are downregulated in ctrl vs. PAS
+Cluster 3: genes that are downregulated in PAS vs ctrl
+Cluster 4: genes that are upregulated in PAS vs. ctrl
 
 
 ```{r}
- #Subset results for faster cluster finding 
-clustering_sig_genes <- res_LRT_tb |>
-  arrange(padj) |>
-  head(n=1000)
-
-
-# Obtain rlog values for those significant genes
-rdl_mat <- assay(rld)
-cluster_rlog <- rdl_mat[clustering_sig_genes$gene, ]
-
-#Rownames of anno should cluster_rlog column namees
-
-anno2 <- anno |> 
-  column_to_rownames("seq_ID")
-
-# determining sets of genes with similar expression patterns across sample groups
-# Use the `degPatterns` function from the 'DEGreport' package to show gene clusters across sample groups
-#BiocManager::install("DEGreport")
-
-clusters <- degPatterns(cluster_rlog, 
-                        metadata = anno2, 
-                        time = "place", 
-                        col = NULL ) 
-
-
-
 
 #degPatterns using rld results
 
