@@ -57,19 +57,22 @@ PAS_immune <- PAS_immune |>
         inner_join(ensembl_to_entrez, by = c("ENSEMBL" = "ENSEMBL")) 
 PAS_immune <- PAS_immune[!duplicated(PAS_immune$SYMBOL),]
 PAS_immune <- PAS_immune |>
+  as.data.frame() |>
         remove_rownames() |>
         drop_na() |>
         column_to_rownames(var= "SYMBOL")
 PAS_immune <- PAS_immune |>
-        select(-ENSEMBL)|>
-        as.matrix() 
+        dplyr::select(-ENSEMBL) |>
+  as.matrix()
+
+write.table(PAS_immune, "PAS.txt", sep= " ")
 ```
 
 ## Deconvolution
 
 ```{r}
 
-res_cibersort <- deconvolute(PAS_immune, "quantiseq" )
+res_cibersort <- deconvolute(PAS_immune, "abis" )
 ```
 
 ```{r, fig.height=4, fig.width=8}
