@@ -66,7 +66,7 @@ aim: assesing the overall similarity between the samples- which samples are simi
 sampleDists <- dist(t(assay(rld)))
 
 sampleDistMatrix <- as.matrix(sampleDists)
-rownames(sampleDistMatrix) <- paste(rld$place, rld$seq_ID, sep="-")
+rownames(sampleDistMatrix) <- paste(rld$place, rld$sample_ID, sep="-")
 colnames(sampleDistMatrix) <- NULL
 colors <- colorRampPalette(rev(brewer.pal(9, "Reds")) )(255)
 pheatmap(sampleDistMatrix,

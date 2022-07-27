@@ -79,6 +79,8 @@ plotPercentBars(varPart_pas[1:10,], col = c(ggColorHue(ncol(varPart_pas) - 1), "
 ```
 How to get the genes not the ensemble ID? 
 
+<!-- VJM: Use the KEY you generated and merge it ;)  -->
+
 ```{r}
 sortCols(varPart_pas)
 plotVarPart( sortCols( varPart_pas ) )

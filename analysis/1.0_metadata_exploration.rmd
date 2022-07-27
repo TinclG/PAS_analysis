@@ -22,7 +22,10 @@ Workflow sources:
 
 
 ```{r}
-library(pasilla)
+#library(pasilla)
+
+#<!-- VJM: If there is no specific reason to load this unrelated dataset if would delete it! -->
+
 library(DESeq2)
 library(tidyverse)
 library(readr)
@@ -113,6 +116,8 @@ PAS <- PAS |>
 
 In the design we included Grav, Para, sectio, Csec and place
 
+<!-- VJM: You can usually play around here and add/remove explanatory variables. For the final analysis I would suggest removing the terms that don't explain much variance! -->
+
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData = anno |> column_to_rownames(var = "seq_ID"),
@@ -136,9 +141,12 @@ note! for levels, the R will choose based on alphabetical order! careful
 dds$place<-factor(dds$place, 
                   levels= c("Ctrl", "CtrlMus", "PAS"))
 dds <- DESeq(dds)
-results_PAS_ctrl <- results(dds)
-results_PAS_ctrl <-results(dds, 
-                           name="place_PAS_vs_Ctrl")
+#results_PAS_ctrl <- results(dds)
+#results_PAS_ctrl <-results(dds, 
+#                           name="place_PAS_vs_Ctrl")
+
+#<!-- VJM: This is a little confusing to me, the object "results_PAS_ctrl" is being overwritten three times. I would just stick with one! -->
+
 results_PAS_ctrl <-results(dds, 
                            filterFun = ihw, 
                            contrast = c("place", "PAS", "Ctrl"))
@@ -146,8 +154,9 @@ results_PAS_ctrl <-results(dds,
 results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
 results_PAS_ctrl <-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
 sig.res <- results_PAS_ctrl|>  # using just the signif DEG
-  subset(padj<0.05) 
+  subset(padj<0.05)
 
+#<!-- VJM: padj is not equal to pval! Your comment "signif DEG" is a bit ambiguous -->
 
 ```
 
@@ -190,6 +199,8 @@ ENS_bg <- merge(as.data.frame(results_mus_ctrl),
 ENS_sig <- ENS_sig |>
   filter(!ENS_sig$Row.names %in% ENS_bg$Row.names)
 
+#<!-- VJM: Removing the ctrlMus genes from the PAS genes is just one idea to get rid of the background. If it doesn't yield many hits I would try to run the downstream analysis with the unfiltered PAS list. Afterwards you can still check what genes were also in the ctrlMus and remove the hits that might not be worth looking at more closely -->
+
 ```
 
 ### nCount data transformation
@@ -225,6 +236,9 @@ dds_lrt <- DESeq(dds,
                  test="LRT", 
                  full = ~ Grav + Para + sectio + Csec + place,
                  reduced = ~1)
+
+#<!-- VJM: I don't think comparing the full model to the intercept does make much sense for the question you try to address with your data! As I already mentioned this kind of analysis works well with time series data. In addition, you don't have a balanced dataset. -->
+
 res_LRT <- results(dds_lrt)
 
 # Summary of results
@@ -242,6 +256,8 @@ res_LRT_tb <- res_LRT %>%
 sigLRT_genes <- res_LRT_tb %>% 
   dplyr::filter(padj < 0.05)
 
+#<!-- VJM: Using the "dplyr::function()" notation can be a bit tedious if there is a lot of functions throughout the code. The conflict prefer package is a nice alternative to specify this stuff once at the beginning of the document. But of course this is totally ok as well ;)  -->
+
 # Get number of significant genes
 nrow(sigLRT_genes)
 
@@ -253,13 +269,15 @@ Aim: To identify gene clusters exhibiting particular patterns
 Results: 
 Cluster 2: genes that are upregulated in ctrl vs. PAS
 
+<!-- VJM: I would suggest using the DEGs from the "normal" comparison PAS vs. Ctrl for the downstream analysis!!! Taking the LRT comparison because there are more significant genes to work with is going to waste your time - and potentially other peoples time - chasing false positive results. You should start with a question/hypothesis and stick with it !! -->
 
 ```{r}
  #Subset results for faster cluster finding (for classroom demo purposes)
-clustering_sig_genes <- sigLRT_genes %>%
+clustering_sig_genes <- sigLRT_genes %>% # results_PAS_ctrl?!
   arrange(padj) %>%
   head(n=1000)
 
+#<!-- VJM: Why do you exclude significant genes? - with "head(n=1000)" - I think the trade of to wait a little longer should be worth it taking all of them?! If it does not converge that's another issue ... -->
 
 # Obtain rlog values for those significant genes
 rdl_mat <- assay(rld)
@@ -282,12 +300,15 @@ clusters <- degPatterns(cluster_rlog,
 #??? put the gene names in the df
 head(clusters$df)
 
-cluster_2_genes <- clusters$df %>%
-          filter(cluster == 2)
+#<!-- VJM: Is this what you wanted? -->
+
+cluster_2_genes <- clusters$df |>
+  rownames_to_column(var = "gene_id") |>
+  left_join(KEY) |>
+  relocate(gene_name, .after = gene_id) %>%
+  filter(cluster == 2) |>
+  select(-genes)
 ```
-
-
-
 
 ## Plot PCA 
 
@@ -317,8 +338,6 @@ p <- ggplot(pcaData,
   ggtitle("PCA")
   
 ```
-
-
 ### Different visualisation
 ```{r}
 p <- ggplot(pcaData,

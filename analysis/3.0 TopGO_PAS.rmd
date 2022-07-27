@@ -18,6 +18,9 @@ output:
  toc_float: true
 ---
 
+
+<!-- VJM: I would suggest to save transformed/generated data from each notebook and load it again if needed in the next notebook (e.g. the transformed metadata, DEG results, cluster info, etc.). I find it difficult to follow what data from the previous steps you use for this analysis! Also this way you can start each notebook with a clean environment and don't have to worry about overwriting existing objects + makes analysis more robust/reproducible -->
+
 ```{r}
 
 library(tidyverse)
@@ -28,6 +31,9 @@ library(janitor)
 library(ALL)
 library(pcaExplorer)
  BiocManager::install(hgu95av2.db)
+ 
+ #<!-- VJM: Just load the package don't install it -->
+ 
 data(ALL)
 data(geneList)
 affyLib <- paste(annotation(ALL), "db", sep = ".")
@@ -49,6 +55,8 @@ head(topDiffGenes(geneList))
                      allGenes = geneList, geneSel = topDiffGenes,
                      nodeSize = 10,
                      annot = annFUN.db, affyLib = affyLib)
+ 
+ #<!-- VJM: I'm not sure I get this, this doesn't run with your data ?? -->
 
 ```
 # TopGO on the RNAseq results
@@ -58,7 +66,10 @@ The input should be a named vector of DEG genes. Used is ENS_sig object created 
 1.0_metadata_exploration. (changed on 11.7.22)
 
 If using sig.res you need to change the code. 
+
 ```{r puting the genes as named vector}
+
+#<!-- VJM: If I recall correctly: ENS_sig is minus CtrlMus background genes and sig.res is unfiltered. Maybe it might be worth to think of better descriptive object names. Ideally, if you look at the analysis in a year the names should be obvious  -->
 
 genes<-ENS_sig #trying with ENS_sig instead of sig.genes
 
@@ -171,6 +182,93 @@ GOdataMF <- new("topGOdata",
     annot = annFUN.GO2genes,
     GO2genes= All_genes[[2]])
 
+```
+
+```{r}
+#<!-- VJM: Is this what you wanted to do?  -->
+
+# From the post you specified above (https://www.biostars.org/p/471549/):
+# (1) rank genes by padj and and make vector with length of genes
+rankedGenes <- c(1:nrow(ENS_sig))
+names(rankedGenes) <- ENS_sig %>%
+  arrange(padj) %>% pull(gene_name)
+
+# (2) Run funcction
+selection <- function(x) TRUE
+allGO2genes <- annFUN.org(
+  whichOnto = "BP",
+  feasibleGenes = NULL,
+  mapping = "org.Hs.eg.db",
+  ID = "symbol")
+GOdata <- new(
+  "topGOdata",
+  ontology = "BP", # also available are 'CC' and 'MF'
+  allGenes = rankedGenes,
+  annot = annFUN.GO2genes,
+  GO2genes = allGO2genes,
+  geneSel = selection,
+  nodeSize = 5)
+
+# (3) perform gene enrichment
+results.ks <- runTest(GOdata, algorithm = "classic", statistic = "ks")
+goEnrichment <- GenTable(
+  GOdata,
+  KS = results.ks,
+  orderBy = "KS",
+  topNodes = 100,
+  numChar = 99)
+goEnrichment$KS <- as.numeric(goEnrichment$KS)
+goEnrichment <- goEnrichment[goEnrichment$KS < 0.05,] # filter terms for KS p<0.05
+goEnrichment <- goEnrichment[,c("GO.ID","Term","KS")]
+goEnrichment
+
+# (4) generate a plot of the enrichment results
+ntop <- 30
+ggdata <- goEnrichment[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+gg1 <- ggplot(ggdata,
+  aes(x = Term, y = -log10(KS), size = -log10(KS), fill = -log10(KS))) +
+
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = 'royalblue', high = 'red4') +
+
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO Biological processes',
+    subtitle = 'Top 30 terms ordered by Kolmogorov-Smirnov p-value',
+    caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+
+  coord_flip()
+
+gg1
 ```
 
 ##topGOtable
