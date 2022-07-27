@@ -65,14 +65,14 @@ PAS_immune <- PAS_immune |>
         dplyr::select(-ENSEMBL) |>
   as.matrix()
 
-write.table(PAS_immune, "PAS.txt", sep= " ")
+#write.table(PAS_immune, "PAS.txt", sep= " ")
 ```
 
 ## Deconvolution
 
 ```{r}
 
-res_cibersort <- deconvolute(PAS_immune, "abis" )
+res_cibersort <- deconvolute(PAS_immune, "quantiseq", tumor = FALSE)
 ```
 
 ```{r, fig.height=4, fig.width=8}

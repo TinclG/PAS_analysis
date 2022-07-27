@@ -54,7 +54,7 @@ library(enrichplot)
 
 ```{r}
 #Merging the df cluster_3_genes with gene_ids
-c2 <- merge(as.data.frame(cluster_2_genes), 
+c2 <- merge(as.data.frame(cluster_4_genes), 
                  KEY, 
                  by.y="gene_id", 
                  by.x= "genes")
