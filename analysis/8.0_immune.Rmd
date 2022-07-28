@@ -74,11 +74,11 @@ order <- c("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.5", "TG.6", "TG.7", "TG.
 ```{r}
 ##methods:
 #mpc <- "mcp_counter"
-#epic <- "epic"
-qseq <- "quantiseq"
+epic <- "epic"
+#qseq <- "quantiseq"
 
 
-res_cibersort <- deconvolute(PAS_immune, qseq, tumor = FALSE)
+res_cibersort <- deconvolute(PAS_immune, epic, tumor = FALSE)
 
 ```
 
