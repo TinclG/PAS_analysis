@@ -17,8 +17,8 @@ output:
  toc_float: true
 ---
 ```{r, include=FALSE}
-install.packages("remotes")
-remotes::install_github("grst/immunedeconv")
+#install.packages("remotes")
+#remotes::install_github("grst/immunedeconv")
 ```
 
 ```{r, message=FALSE, warning=FALSE}
@@ -49,7 +49,8 @@ In order to analyse our data we need a gene expression matrix with HGNC symbols 
 ```{r data wrangling}
 PAS_immune <- PAS |>
         as.data.frame() |>
-        rownames_to_column(var= "ENSEMBL")
+        rownames_to_column(var= "ENSEMBL") 
+
 ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(PAS_immune$ENSEMBL),
                                            keytype = "ENSEMBL",
                                            columns = c("SYMBOL"))
@@ -62,17 +63,23 @@ PAS_immune <- PAS_immune |>
         drop_na() |>
         column_to_rownames(var= "SYMBOL")
 PAS_immune <- PAS_immune |>
-        dplyr::select(-ENSEMBL) |>
+  dplyr::select(-ENSEMBL) |> 
   as.matrix()
-
+order <- c("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.5", "TG.6", "TG.7", "TG.9", "TG.11", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
 #write.table(PAS_immune, "PAS.txt", sep= " ")
 ```
 
 ## Deconvolution
 
 ```{r}
+##methods:
+#mpc <- "mcp_counter"
+#epic <- "epic"
+qseq <- "quantiseq"
 
-res_cibersort <- deconvolute(PAS_immune, "quantiseq", tumor = FALSE)
+
+res_cibersort <- deconvolute(PAS_immune, qseq, tumor = FALSE)
+
 ```
 
 ```{r, fig.height=4, fig.width=8}
@@ -83,12 +90,13 @@ res_cibersort %>%
   geom_bar(stat = "identity") +
   coord_flip() +
   scale_fill_brewer(palette = "Paired") +
-  scale_x_discrete(limits = rev(levels(res_cibersort)))
+  #scale_x_discrete(limits = rev(levels(res_cibersort))) +
+  scale_x_discrete(limits = order) #reordering the y axis
 ```
 
 
 ```{r}
-res_mcp_counter <- deconvolute(PAS_immune, "mcp_counter")
+res_mcp_counter <- deconvolute(PAS_immune, qseq, tumor = FALSE)
 res_mcp_counter %>%
   gather(sample, score, -cell_type) %>%
   ggplot(aes(x = sample, y = score, color = cell_type)) +
@@ -97,6 +105,11 @@ res_mcp_counter %>%
   scale_color_brewer(palette = "Paired", guide = FALSE) +
   coord_flip() +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  scale_x_discrete(limits = order)
 ```
 Idea: would be good to split the samples on PAS and ctrl for better visualisation 
+
+
+selecting a method for the deconvolution:
+- cibersort- measure intraeample proportions of immune cell population, MCP counter measure an abundance estimate per cell population that enables inter sample comparison
