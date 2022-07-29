@@ -24,7 +24,6 @@ Workflow sources:
 
 
 ```{r}
-library(pasilla)
 library(DESeq2)
 library(tidyverse)
 library(readr)
@@ -40,7 +39,7 @@ library(cowplot)
 #Meta data wrangling
 
 ```{r}
-anno <- read.csv2(paste0(params$data,"/metadata_PASeq.csv"),
+anno <- read.csv2(paste0(params$data,"/metadata_PASeq2.csv"),
                   sep= ";")
 
 anno <- anno |>
@@ -117,12 +116,13 @@ PAS <- PAS |>
 
 ## Deseq and DE analysis
 
-In the design we included Grav, Para, sectio, Csec and place
+In the design we included Grav, Para, Csec and place
+Variables: weight, 
 
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData = anno |> column_to_rownames(var = "seq_ID"),
-                            design = ~ Grav + Para + sectio + Csec + place)
+                            design = ~ Grav + Para + Csec + place)
 
 #prefiltering- removing rows with few reads
 keep<-rowSums(counts(dds)) >=10
