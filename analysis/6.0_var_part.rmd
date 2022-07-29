@@ -53,7 +53,7 @@ anno
 ```
 ## From the vignette
 
-```{r}
+```{r example}
 #example
 data(varPartData)
 form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)a
@@ -65,14 +65,15 @@ plotVarPart(vp)
 
 ## Variance partition PAS
 
+Working on the rlog results
 ```{r}
-dds<-estimateSizeFactors(dds) # tries to get rid of the variations between samples
-expr <- rowSums(fpm(dds)>1) >= 0.5* ncol(dds)
+dds<-estimateSizeFactors(dds) 
+expr <- rowSums(assay(rlog(dds))>1) >= 0.5* ncol(dds)
 
 #transformation, plus filter for the genes that pass the 0.05
-quantlog<-log2(fpm(dds)[expr,] +1)
+quantlog<-log2(assay(rlog(dds))[expr,] +1)
 
-form <- ~(weight+ Grav + Para + sectio + Csec+ place) #which one is categorical, fixed or continuous
+form <- ~( Grav + Para + Csec+ place) #which one is categorical, fixed or continuous
 #uses rld table results for input
 varPart_pas <- fitExtractVarPartModel(quantlog,form, anno) #problem
 plotVarPart(varPart_pas)
