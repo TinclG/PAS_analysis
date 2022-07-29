@@ -6,6 +6,7 @@ params:
  data: "../data"
  results: "../res"
  lib: "../lib"
+ rds: "../rds"
  maxcores: 6
 output:
  html_notebook:
@@ -33,6 +34,10 @@ library(clusterProfiler)
 library(ReactomePA)
 library(DEGreport)
 library(cowplot)
+library(conflicted)
+
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
 ```
 
 
@@ -84,7 +89,7 @@ anno$cutWeight <- cut(anno$weight,
                       include.lowest = TRUE)
 ###cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
 
-#saveRDS(anno, file = "anno.rds")
+saveRDS(anno, file = file.path(params$rds, "anno.rds"))
 ```
 
 [reference birth weight](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5710996/)
@@ -111,7 +116,7 @@ PAS <- PAS |>
   column_to_rownames(var = "gene_id") 
 
 
-#saveRDS(PAS, file="PAS.rds")
+saveRDS(PAS, file = file.path(params$rds,"PAS.rds"))
 ```
 
 ## Deseq and DE analysis
@@ -128,7 +133,7 @@ dds<-DESeqDataSetFromMatrix(countData = PAS,
 keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
 
-#saveRDS(dds, file="dds_mixeddesign.rds")
+saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign.rds"))
 ```
 
 # running the Differential expression analysis
@@ -143,16 +148,15 @@ note! for levels, the R will choose based on alphabetical order! careful
 dds$place<-factor(dds$place, 
                   levels= c("Ctrl", "CtrlMus", "PAS"))
 dds <- DESeq(dds)
-results_PAS_ctrl <- results(dds)
-results_PAS_ctrl <-results(dds, 
-                           name="place_PAS_vs_Ctrl")
+
 results_PAS_ctrl <-results(dds, 
                            filterFun = ihw, 
+                           name="place_PAS_vs_Ctrl",
                            contrast = c("place", "PAS", "Ctrl"))
 
 results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
-results_PAS_ctrl <-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
-sig.res <- results_PAS_ctrl|>  # using just the signif DEG
+results_PAS_ctrl <- results_PAS_ctrl[order(results_PAS_ctrl$padj),]
+sig.res <- results_PAS_ctrl|>  
   subset(padj<0.05) 
 
 
@@ -200,9 +204,6 @@ ENS_bg <- merge(as.data.frame(results_mus_ctrl),
                 by.x= "row.names")
 residual <- ENS_bg |>
   pull(Row.names)
-
-
-
 ```
 
 ### nCount data transformation
@@ -243,8 +244,8 @@ Instead of rlog transformation we could usse likelihood test ratio. This is more
 
 dds_lrt <- DESeq(dds, 
                  test="LRT", 
-                 full = ~ Grav + Para + sectio + Csec + place,
-                 reduced = ~ Grav + Para + sectio + Csec )
+                 full = ~ Grav + Para + Csec + place,
+                 reduced = ~ Grav + Para + Csec )
 res_LRT <- results(dds_lrt)
 
 # Summary of results
@@ -284,17 +285,22 @@ rld3 <- as_tibble(assay(rld2[rownames(rld2) %in% rownames(results_PAS_ctrl|> sub
 
 clusters <- degPatterns(rld3, 
                         metadata = anno |> 
-                          column_to_rownames(var = "seq_ID"), 
+                          column_to_rownames(var = "seq_ID"),
                         time = "place", 
                         col = NULL)
 
 clusters$df
 clusters$plot
 
-cluster_4_genes <- clusters$df %>%
-          filter(cluster == 4)
-cluster_2_genes <- clusters$df %>%
-          filter(cluster == 2)
+clust_2 <- 2
+#clust_4 <- 4
+
+cluster_2_genes <- clusters$df |>
+  rownames_to_column(var = "gene_id") |>
+  left_join(KEY) |>
+  relocate(gene_name, .after = gene_id) |>
+  filter(cluster == clust_2) |>
+  select(-genes)
 ```
 
 
