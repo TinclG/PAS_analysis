@@ -25,11 +25,9 @@ library(janitor)
 library(topGO)
 library(ALL)
 library(pcaExplorer)
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
 library(enrichplot)
+library(hgu95av2.db)
 
-#BiocManager::install("hgu95av2.db")
 
 # Required data: from notebook 1.0_metadata_exploration
 
