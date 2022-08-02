@@ -1,12 +1,14 @@
 #-------------Useful commands for data wrangling dplyr---------
+#This doc includes useful commands for data wrangling using dplyr
+
 #-------------Params-------------------------------------------
+#In yaml od Rmarkdown specify thee params to the folders
 params:
   data: "../data"
 results: "../res"
 lib: "../lib"
 
-params$data 
-### example paste0(params$data,"/metadata_PASeq.csv")
+#Example: file = file.path(params$rds, "dds_mixeddesign.rds"))
 
 #-------------Importing the file-------------------------------
 #csv 
@@ -39,6 +41,36 @@ long_df <- gather(df,
 wide_df <- spread(long_df, test, score)
 
 #-------------Useful dplyr functions with examples------------
+
+##--select
+#* select(): select the columns
+#* select(everything()): selects all the columns
+#* select(last_col()): select last column
+#* select(!last_col()): select everything but last column
+#### "!" is always used for exclusion 
+
+##--starts_with, ends_with and contains
+#* select(starts_with("m")): selecting all columns that start with "m"
+#* select(contains("m)): select columns that contain "m"
+
+##--selecting columns of specific type
+#select(where(is.character))
+
+##--combining selection
+#*select(where(is.character) & contains("l")) : & meet both requirements
+#*select(where(is.character) | contains("l")) :| meet one of the requirements
+
+## Renaming
+#* rename(): renaming column name
+
+#* filter(): select the rows
+#* mutate(): modify data, add column
+#* group_by(): group one or more variable
+#* ungroup(): removes the grouping
+#* summarise(): 
+#* bind_rows(): binding multiple data frames by row
+#* bind_cols():
+#* inner_join(x,y, by= "key"): 
 PAS <- PAS |> 
   mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id)) |> 
   select(-gene_name) |>
