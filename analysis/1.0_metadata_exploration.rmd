@@ -289,9 +289,7 @@ clusters <- degPatterns(rld3,
                         time = "place", 
                         col = NULL)
 
-clusters$df
-clusters$plot
-
+#Extracting the genes from the cluster
 clust_2 <- 2
 #clust_4 <- 4
 
