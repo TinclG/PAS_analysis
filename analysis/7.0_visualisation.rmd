@@ -31,10 +31,13 @@ library(genefilter)
 library(RColorBrewer)
 library(vsn)
 library(ggrepel)
+library(ggnewscale)
 #devtools::install_github("kevinsblake/NatParksPalettes", force = TRUE)
 library(NatParksPalettes)
 library(viridisLite)
 library(viridis)
+
+conflict_prefer("rowVars", "genefilter")
 # Required data:
 
 # (1) rld normalisation
@@ -212,7 +215,7 @@ list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
 
 cluster_comp <- compareCluster(clusters,
                                fun = "enrichPathway",
-                               organism = 'hsa',
+                               organism = 'human',
                                pvalueCutoff = 0.2)
                                #OrgDb='org.Hs.eg.db')
 cluster_comp <- pairwise_termsim(cluster_comp)
