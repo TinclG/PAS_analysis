@@ -48,7 +48,8 @@ anno <- read.csv2(paste0(params$data,"/metadata_PASeq2.csv"),
                   sep= ";")
 
 anno <- anno |>
-  filter(seq_ID != "AK19_TG.8") |> #removing an outlier 
+  filter(seq_ID != "AK19_TG.8") |> 
+  filter(seq_ID != "AK19_TG.11") |> #removing an outlier 
   mutate(seq_ID = gsub("AK19_", "", seq_ID)) |> #renaming the seq_ID
   relocate(c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")) |>
   #change column order/ select columns
@@ -89,7 +90,7 @@ anno$cutWeight <- cut(anno$weight,
                       include.lowest = TRUE)
 ###cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
 
-saveRDS(anno, file = file.path(params$rds, "anno.rds"))
+saveRDS(anno, file = file.path(params$rds, "anno_noout.rds"))
 ```
 
 [reference birth weight](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5710996/)
@@ -102,13 +103,13 @@ PAS<-read_tsv(paste0(params$data, "/PAS_counts.tsv"))
 
 #Object with gene_id and gene_names
 KEY <- PAS |>
-  select(-AK19_TG.8) |>
+  select(-c(AK19_TG.8, AK19_TG.11)) |>
   select(gene_id, gene_name) |>
   mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id))
 
 #data wrangling
 PAS <- PAS |> 
-  select(-AK19_TG.8) |>
+  select(-c(AK19_TG.8, AK19_TG.11)) |>
   mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id)) |> 
   select(-gene_name) |>
   mutate_at(vars(-("gene_id")), ceiling) |> #rounding the counts
@@ -116,7 +117,7 @@ PAS <- PAS |>
   column_to_rownames(var = "gene_id") 
 
 
-saveRDS(PAS, file = file.path(params$rds,"PAS.rds"))
+saveRDS(PAS, file = file.path(params$rds,"PAS_noout.rds"))
 ```
 
 ## Deseq and DE analysis
@@ -133,7 +134,7 @@ dds<-DESeqDataSetFromMatrix(countData = PAS,
 keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
 
-saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign.rds"))
+saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign_noout.rds"))
 ```
 
 # running the Differential expression analysis
@@ -176,7 +177,7 @@ results_mus_ctrl<-results(dds,
 results_mus_ctrl<- as.data.frame(results_mus_ctrl)
 results_mus_ctrl <-results_mus_ctrl[order(results_mus_ctrl$padj),]
 results_mus_ctrl<- results_mus_ctrl %>%
-  subset(padj<0.05)
+  subset(padj < 0.05)
 ```
 
 ## pas vs mus
@@ -186,7 +187,7 @@ results_mus_ctrl<- results_mus_ctrl %>%
 results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "CtrlMus"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
 results_mus_PAS<- results_mus_PAS %>%
-  subset(padj<0.05)
+  subset(padj < 0.05)
 ```
 
 
@@ -226,10 +227,10 @@ plot_layout <- function(df, x, y, title) {
     geom_point(size = 0.2) +
     ggtitle(title)
 }
-plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "TG.10", "TG.11", "log2"),
-                  plot_layout(as_tibble(assay(rld)), "TG.10", "TG.11", "rld"),
-                  plot_layout(as_tibble(assay(vst)), "TG.10", "TG.11", "vst"),
-                  plot_layout(as_tibble(log2(fpm)), "TG.10", "TG.11", "fpm"))
+plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "TG.10", "TG.12", "log2"),
+                  plot_layout(as_tibble(assay(rld)), "TG.10", "TG.12", "rld"),
+                  plot_layout(as_tibble(assay(vst)), "TG.10", "TG.12", "vst"),
+                  plot_layout(as_tibble(log2(fpm)), "TG.10", "TG.12", "fpm"))
 plot(plot)
 ```
 Results: we want to have a transformation that gives us the least outliers. In this case rlog transformation if the best choice. Rlog compresses the differences for genes.
@@ -291,13 +292,13 @@ clusters <- degPatterns(rld3,
 
 #Extracting the genes from the cluster
 clust_2 <- 2
-#clust_4 <- 4
+clust_3 <- 3
 
 cluster_2_genes <- clusters$df |>
   rownames_to_column(var = "gene_id") |>
   left_join(KEY) |>
   relocate(gene_name, .after = gene_id) |>
-  filter(cluster == clust_2) |>
+  filter(cluster == clust_3) |>
   select(-genes)
 ```
 
