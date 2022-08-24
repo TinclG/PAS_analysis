@@ -83,7 +83,7 @@ pheatmap(sampleDistMatrix,
 
 [heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
 ```{r}
-topVarGenes <- head(order(-rowVars(assay(rld))),50) 
+topVarGenes <- head(order(-rowVars(assay(rld))),100) 
 
 mat <- assay(rld)[ topVarGenes, ]
 mat <- mat - rowMeans(mat)
@@ -110,20 +110,23 @@ df <- as.data.frame(colData(rld)[,c("place", "patient")])
 
 
 col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
-pat_col <-natparks.pals("Arches2", 17)
+pat_col <-natparks.pals("Arches2", 16)
 names(pat_col)<-levels(df$patient)
 
 ann_col <- list(
   patient = pat_col,
   place = c(Ctrl = "#440154FF", PAS = "#404688FF", CtrlMus = "#287C8EFF"))
 
+pdf(file = file.path(params$res, "heatmap.pdf"),width = 8, height = 10)
 pheatmap(mat, 
          annotation_col=df,
          color = viridis(10),
          annotation_colors = ann_col,
+        annotation_names_col = T,
+        
          border_color = NA)
          #scale = "row")#scale = "row" uses Z-scores, rather then normalized count values
-         
+       dev.off() 
 
 
 
