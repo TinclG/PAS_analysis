@@ -154,7 +154,7 @@ results_PAS_ctrl <-results(dds,
                            filterFun = ihw, 
                            name="place_PAS_vs_Ctrl",
                            contrast = c("place", "PAS", "Ctrl"))
-
+# what about the log for shrinkage? 
 results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
 results_PAS_ctrl <- results_PAS_ctrl[order(results_PAS_ctrl$padj),]
 sig.res <- results_PAS_ctrl|>  
