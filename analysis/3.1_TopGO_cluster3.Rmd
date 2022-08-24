@@ -173,9 +173,9 @@ as_tibble(Wiki_pathway@result)
 ```
 [Differences between KEGG, Reactome and Wiki Pathway](https://www.frontiersin.org/articles/10.3389/fgene.2019.01203/full)
 ```{r}
-ontology <- "BP" #(Biological Pathway)
+#ontology <- "BP" #(Biological Pathway)
 #ontology <- "CC" #(Cellular Component)
-#ontology <- "MF" #(Molecular Function)
+ontology <- "MF" #(Molecular Function)
 
 # Decide test algorithm
 algorithm <- "weight01"
@@ -216,7 +216,7 @@ Res_GO <- runTest(GOdata,
 Res_GO
 
 # Build result table of all DEG
-tab <- GenTable(GOdata, Pval = Res_GO, topNodes = 20)
+tab <- GenTable(GOdata, Fisher = Res_GO, Pval = Res_GO, topNodes = 20)
 
 # Update table with full GO term name
 # Update table 
@@ -254,4 +254,55 @@ dotplot(R_PA, showCategory=30) +
   ggtitle("dotplot for ORA")
 
 
+#dotplot GO
+tab$Pval <- as.numeric(tab$Pval)
+tab <- tab[tab$Pval < 0.05,]
+tab <- tab[,c("GO.ID","Term","Pval")]
+tab
+
+ntop <- 20
+ggdata <- tab[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+ggplot(ggdata,
+  aes(x = Term, y = -log10(Pval), size = -log10(Pval), fill = -log10(Pval))) +
+
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = 'blue', high = 'red') +
+
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO MF analysis') +
+    #subtitle = 'Top 50 terms ordered by Kolmogorov-Smirnov p-value',
+    #subtitle = 'Top 20 terms ordered by Fisher Exact p-value',
+    #caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+
+  coord_flip()
 ```
