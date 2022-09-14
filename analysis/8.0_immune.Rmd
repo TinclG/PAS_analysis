@@ -65,7 +65,7 @@ PAS_immune <- PAS_immune |>
 PAS_immune <- PAS_immune |>
   dplyr::select(-ENSEMBL) |> 
   as.matrix()
-order <- c("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.5", "TG.6", "TG.7", "TG.9", "TG.11", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
+order <- c("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.6", "TG.7", "TG.9", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
 #write.table(PAS_immune, "PAS.txt", sep= " ")
 ```
 
@@ -96,7 +96,7 @@ res_cibersort %>%
 
 
 ```{r}
-res_mcp_counter <- deconvolute(PAS_immune, qseq, tumor = FALSE)
+res_mcp_counter <- deconvolute(PAS_immune, epic, tumor = FALSE)
 res_mcp_counter %>%
   gather(sample, score, -cell_type) %>%
   ggplot(aes(x = sample, y = score, color = cell_type)) +
