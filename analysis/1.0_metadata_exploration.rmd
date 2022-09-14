@@ -118,7 +118,7 @@ PAS <- PAS |>
   column_to_rownames(var = "gene_id") 
 
 
-saveRDS(PAS, file = file.path(params$rds,"PAS_noout.rds"))
+#saveRDS(PAS, file = file.path(params$rds,"PAS_noout.rds"))
 ```
 
 ## Deseq and DE analysis
