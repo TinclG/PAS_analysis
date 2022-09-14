@@ -48,7 +48,8 @@ anno <- read.csv2(paste0(params$data,"/metadata_PASeq2.csv"),
                   sep= ";")
 
 anno <- anno |>
-  filter(seq_ID != "AK19_TG.8") |> 
+  filter(seq_ID != "AK19_TG.5") |> 
+  filter(seq_ID != "AK19_TG.8") |>
   filter(seq_ID != "AK19_TG.11") |> #removing an outlier 
   mutate(seq_ID = gsub("AK19_", "", seq_ID)) |> #renaming the seq_ID
   relocate(c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")) |>
@@ -103,13 +104,13 @@ PAS<-read_tsv(paste0(params$data, "/PAS_counts.tsv"))
 
 #Object with gene_id and gene_names
 KEY <- PAS |>
-  select(-c(AK19_TG.8, AK19_TG.11)) |>
+  select(-c(AK19_TG.5, AK19_TG.8, AK19_TG.11)) |>
   select(gene_id, gene_name) |>
   mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id))
 
 #data wrangling
 PAS <- PAS |> 
-  select(-c(AK19_TG.8, AK19_TG.11)) |>
+  select(-c(AK19_TG.5, AK19_TG.8, AK19_TG.11)) |>
   mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id)) |> 
   select(-gene_name) |>
   mutate_at(vars(-("gene_id")), ceiling) |> #rounding the counts
