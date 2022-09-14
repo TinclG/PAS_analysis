@@ -83,7 +83,7 @@ pheatmap(sampleDistMatrix,
 
 [heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
 ```{r}
-topVarGenes <- head(order(-rowVars(assay(rld))),100) 
+topVarGenes <- head(order(-rowVars(assay(rld))),60) 
 
 mat <- assay(rld)[ topVarGenes, ]
 mat <- mat - rowMeans(mat)
@@ -110,7 +110,7 @@ df <- as.data.frame(colData(rld)[,c("place", "patient")])
 
 
 col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
-pat_col <-natparks.pals("Arches2", 16)
+pat_col <-natparks.pals("Arches2", 15)
 names(pat_col)<-levels(df$patient)
 
 ann_col <- list(
@@ -219,7 +219,7 @@ list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
 cluster_comp <- compareCluster(clusters,
                                fun = "enrichPathway",
                                organism = 'human',
-                               pvalueCutoff = 0.2)
+                               pvalueCutoff = 0.5)
                                #OrgDb='org.Hs.eg.db')
 cluster_comp <- pairwise_termsim(cluster_comp)
 
