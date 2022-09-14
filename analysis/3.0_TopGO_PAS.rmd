@@ -7,6 +7,7 @@ params:
  data: "../data"
  results: "../res"
  lib: "../lib"
+ vign: FALSE
  maxcores: 6
 output:
  html_notebook:
@@ -47,7 +48,7 @@ results_mus_ctrl
  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=pdf
  
 
-```{r, eval=F}
+```{r, eval= params$vign}
 data(ALL)
 data(geneList)
 affyLib <- paste(annotation(ALL), "db", sep = ".")
@@ -165,12 +166,12 @@ Reactome uses hypergeometric model (one sided version of Fishers exact test) to 
 R_PA<-enrichPathway(gene = genes, 
                     organism = "human",
                     universe = universe,
-                    pvalueCutoff = 0.2, #had to change the pvaluecutoff  to 0.2because there was nothing to plot
+                    pvalueCutoff = 0.5, #had to change the pvaluecutoff  to 0.2because there was nothing to plot
                     readable = T)
 
 as_tibble(R_PA@result)
 
-write.csv(R_PA@result, "Reactome_PAS_Ctrl_all.csv")
+#write.csv(R_PA@result, "Reactome_PAS_Ctrl_all.csv")
 ```
 ## Wiki pathway
 
@@ -192,9 +193,9 @@ classic method and therefore one expects the p-values returned by the former met
 are lower bounded by the p-values returned by the later method.
 
 ```{r}
-ontology <- "BP" #(Biological Pathway)
+#ontology <- "BP" #(Biological Pathway)
 #ontology <- "CC" #(Cellular Component)
-#ontology <- "MF" #(Molecular Function)
+ontology <- "MF" #(Molecular Function)
 
 # Decide test algorithm
 algorithm <- "weight01"
@@ -216,6 +217,8 @@ statistic <- "fisher"      # Fischer's exact test
 #statistic <- "globaltest" # globaltest
 
 # A list of up-regulated genes
+# dn_genes
+# up_genes
 upList <- factor(as.integer(all_genes %in% up_genes))
 names(upList) <- all_genes
 
@@ -264,6 +267,58 @@ mutate(R_PA, qscore = -log(p.adjust, base = 10)) |>
 #Dot plot 
 dotplot(R_PA, showCategory=30) + 
   ggtitle("dotplot for ORA")
+
+#dotplot GO
+up_tab$Pval <- as.numeric(up_tab$Pval)
+up_tab <- up_tab[up_tab$Pval < 0.05,]
+up_tab <- up_tab[,c("GO.ID","Term","Pval")]
+up_tab
+
+ntop <- 20
+ggdata <- up_tab[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+ggplot(ggdata,
+  aes(x = Term, y = -log10(Pval), size = -log10(Pval), fill = -log10(Pval))) +
+
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = 'blue', high = 'red') +
+
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO MF analysis') +
+    #subtitle = 'Top 50 terms ordered by Kolmogorov-Smirnov p-value',
+    #subtitle = 'Top 20 terms ordered by Fisher Exact p-value',
+    #caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+
+  coord_flip()
 ```
 
 To do:
