@@ -36,10 +36,10 @@ Needs normalised expression values
 2) metadata
 3) model
 ```{r, include=FALSE}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+#if (!require("BiocManager", quietly = TRUE))
+ #   install.packages("BiocManager")
 
-BiocManager::install("variancePartition")
+#BiocManager::install("variancePartition")
 library(variancePartition)
 library(limma)
 library(BiocParallel)
@@ -73,12 +73,25 @@ expr <- rowSums(assay(rlog(dds))>1) >= 0.5* ncol(dds)
 #transformation, plus filter for the genes that pass the 0.05
 quantlog<-log2(assay(rlog(dds))[expr,] +1)
 
+#changing the ENSEMBL to Gene names
+
+quantlog <-  merge(as.data.frame(quantlog), 
+                 KEY, 
+                 by.y="gene_id", 
+                 by.x= "row.names")
+quantlog <-quantlog[!duplicated(quantlog$gene_name),]
+quantlog <-  quantlog |>
+  select(-Row.names)|>
+  remove_rownames()|>
+  column_to_rownames(var ="gene_name")
+
 form <- ~( Grav + Para + Csec+ place) #which one is categorical, fixed or continuous
 #uses rld table results for input
 varPart_pas <- fitExtractVarPartModel(quantlog,form, anno) #problem
 plotVarPart(varPart_pas)
 
 ```
+
 ```{r}
 # plot of varienace fractions for a subset of genes
 plotPercentBars(varPart_pas[1:10,], col = c(ggColorHue(ncol(varPart_pas) - 1), "grey85"))
