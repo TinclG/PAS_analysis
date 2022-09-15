@@ -155,7 +155,7 @@ Kegg <- enrichKEGG(gene = genes,
                    pvalueCutoff = 0.05)
 head(Kegg)
 
-write.csv(Kegg, "Kegg_PAS_Ctrl_all.csv")
+write.csv(Kegg, file.path(params$results, "Kegg_PAS_Ctrl_all.csv"))
 ```
 
 ## Reactome enrich analysis
