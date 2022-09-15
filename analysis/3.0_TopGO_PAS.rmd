@@ -138,6 +138,9 @@ genes <- PAS_ctrl |>
   subset(padj < 0.05) |> 
   pull(ENTREZID) |> 
   unique()
+
+
+
 ```
 ## KEEGG pathway over-representation analasis
  
@@ -162,11 +165,21 @@ write.csv(Kegg, file.path(params$results, "Kegg_PAS_Ctrl_all.csv"))
 
 Reactome uses hypergeometric model (one sided version of Fishers exact test) to asses whether the number of selected genes associated with a reactome pathway is larger then expected. 
 
+--> you need to run this if you want to analyse up and downregulated genes for enrichPathway
+up_genes <- PAS_ctrl |>
+  subset(padj < 0.05 & PAS_ctrl$log2FoldChange > 0) |>
+  pull(ENTREZID) |> 
+  unique()
+
+dn_genes <- PAS_ctrl |>
+  subset(padj < 0.05 & PAS_ctrl$log2FoldChange < 0) |>
+  pull(ENTREZID) |> 
+  unique()
 ```{r reactome}
-R_PA<-enrichPathway(gene = genes, 
+R_PA<-enrichPathway(gene = dn_genes, 
                     organism = "human",
                     universe = universe,
-                    pvalueCutoff = 0.5, #had to change the pvaluecutoff  to 0.2because there was nothing to plot
+                    pvalueCutoff = 0.05, #had to change the pvaluecutoff  to 0.2because there was nothing to plot
                     readable = T)
 
 as_tibble(R_PA@result)
