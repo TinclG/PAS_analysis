@@ -91,7 +91,7 @@ anno$cutWeight <- cut(anno$weight,
                       include.lowest = TRUE)
 ###cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
 
-saveRDS(anno, file = file.path(params$rds, "anno_noout.rds"))
+#saveRDS(anno, file = file.path(params$rds, "anno_noout.rds"))
 ```
 
 [reference birth weight](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5710996/)
@@ -137,7 +137,7 @@ dds<-DESeqDataSetFromMatrix(countData = PAS,
 keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
 
-saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign_noout.rds"))
+#saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign_noout.rds"))
 ```
 
 # running the Differential expression analysis
@@ -283,9 +283,6 @@ res_LRT_tb <- res_LRT |>
   as_tibble() |>
   filter(padj<0.05) #subsetting for the significant genes
 
-
-# Get number of significant genes
-nrow(sigLRT_genes)
 
 # Get number of significant genes and compared it to the wald test 
 nrow(res_LRT_tb)
