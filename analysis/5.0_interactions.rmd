@@ -23,6 +23,8 @@ dds<-dds[keep,]
 ## PAS vs ctrl 
 ```{r}
 
+#<!-- VJM: I would run this only once and save the output to a file. This saves you running intensive tasks multiple times, makes your script more readable and avoids changing the input varaibles in one place and forgetting to change it on the other places.  -->
+
 dds$place<-factor(dds$place, levels= c("ctrl", "mus", "PAS"))
 dds <- DESeq(dds)
 results_PAS_ctrl <- results(dds)

@@ -40,6 +40,7 @@ long_df <- gather(df,
 
 wide_df <- spread(long_df, test, score)
 
+<<<<<<< HEAD
 #-------------Useful dplyr functions with examples------------
 
 ##--select
@@ -71,11 +72,15 @@ wide_df <- spread(long_df, test, score)
 #* bind_rows(): binding multiple data frames by row
 #* bind_cols():
 #* inner_join(x,y, by= "key"): 
+=======
+#-------------Useful dplyr functions with examples-------------
+>>>>>>> 13515c2f89ac8bd46b1c245403f1ab67271c92a6
 PAS <- PAS |> 
   mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id)) |> 
   select(-gene_name) |>
   mutate_at(vars(-("gene_id")), ceiling) |> #rounding the counts
   rename_with(~str_replace(., pattern = "AK19_", replacement = "")) |>
+<<<<<<< HEAD
   column_to_rownames(var = "gene_id")
 
 #------------Removing NA from rows----------------------------
@@ -84,3 +89,12 @@ df %>% filter(!is.na(col1))
 # or 
 PAS_immune <- PAS_immune |>
   drop_na()
+=======
+  column_to_rownames(var = "gene_id") |>
+  select(-columnname) #removing a column
+
+
+#------------Removing duplicated features----------------------
+
+mat <- mat[!duplicated(mat$gene_name),] 
+>>>>>>> 13515c2f89ac8bd46b1c245403f1ab67271c92a6

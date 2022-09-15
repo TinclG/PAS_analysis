@@ -126,6 +126,8 @@ PAS <- PAS |>
 In the design we included Grav, Para, Csec and place
 Variables: weight, 
 
+<!-- VJM: You can usually play around here and add/remove explanatory variables. For the final analysis I would suggest removing the terms that don't explain much variance! -->
+
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData = anno |> column_to_rownames(var = "seq_ID"),
@@ -151,16 +153,20 @@ dds$place<-factor(dds$place,
                   levels= c("Ctrl", "CtrlMus", "PAS"))
 dds <- DESeq(dds)
 
+
 results_PAS_ctrl <-results(dds, 
                            filterFun = ihw, 
                            name="place_PAS_vs_Ctrl",
                            contrast = c("place", "PAS", "Ctrl"))
 # what about the log for shrinkage? 
 results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
-results_PAS_ctrl <- results_PAS_ctrl[order(results_PAS_ctrl$padj),]
-sig.res <- results_PAS_ctrl|>  
-  subset(padj<0.05) 
 
+results_PAS_ctrl <-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
+sig.res <- results_PAS_ctrl|>  # using just the signif DEG
+  subset(padj<0.05)
+
+
+#<!-- VJM: padj is not equal to pval! Your comment "signif DEG" is a bit ambiguous -->
 
 ```
 Results:
@@ -204,8 +210,18 @@ ENS_bg <- merge(as.data.frame(results_mus_ctrl),
                 KEY, 
                 by.y="gene_id", 
                 by.x= "row.names")
+
 residual <- ENS_bg |>
   pull(Row.names)
+
+
+#excluding the rows from the ENS_sig, that appear in the ENS_bg and ENS_sig
+ENS_sig <- ENS_sig |>
+  filter(!ENS_sig$Row.names %in% ENS_bg$Row.names)
+
+#<!-- VJM: Removing the ctrlMus genes from the PAS genes is just one idea to get rid of the background. If it doesn't yield many hits I would try to run the downstream analysis with the unfiltered PAS list. Afterwards you can still check what genes were also in the ctrlMus and remove the hits that might not be worth looking at more closely -->
+
+
 ```
 
 ### nCount data transformation
@@ -248,6 +264,11 @@ dds_lrt <- DESeq(dds,
                  test="LRT", 
                  full = ~ Grav + Para + Csec + place,
                  reduced = ~ Grav + Para + Csec )
+
+
+#<!-- VJM: I don't think comparing the full model to the intercept does make much sense for the question you try to address with your data! As I already mentioned this kind of analysis works well with time series data. In addition, you don't have a balanced dataset. -->
+
+
 res_LRT <- results(dds_lrt)
 
 # Summary of results
@@ -263,6 +284,9 @@ res_LRT_tb <- res_LRT |>
   filter(padj<0.05) #subsetting for the significant genes
 
 
+# Get number of significant genes
+nrow(sigLRT_genes)
+
 # Get number of significant genes and compared it to the wald test 
 nrow(res_LRT_tb)
 nrow(ENS_sig)
@@ -275,6 +299,7 @@ Results:
 Cluster 3: genes that are downregulated in PAS vs ctrl
 Cluster 4: genes that are upregulated in PAS vs. ctrl
 
+<!-- VJM: I would suggest using the DEGs from the "normal" comparison PAS vs. Ctrl for the downstream analysis!!! Taking the LRT comparison because there are more significant genes to work with is going to waste your time - and potentially other peoples time - chasing false positive results. You should start with a question/hypothesis and stick with it !! -->
 
 ```{r}
 
@@ -302,8 +327,6 @@ cluster_2_genes <- clusters$df |>
   filter(cluster == clust_3) |>
   select(-genes)
 ```
-
-
 
 
 ## Plot PCA 
@@ -334,8 +357,6 @@ p <- ggplot(pcaData,
   ggtitle("PCA")
   
 ```
-
-
 ### Different visualisation
 ```{r}
 p <- ggplot(pcaData,

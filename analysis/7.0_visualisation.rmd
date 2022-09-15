@@ -38,6 +38,7 @@ library(viridisLite)
 library(viridis)
 
 conflict_prefer("rowVars", "genefilter")
+
 # Required data:
 
 # (1) rld normalisation
@@ -70,6 +71,7 @@ aim: assesing the overall similarity between the samples- which samples are simi
 sampleDists <- dist(t(assay(rld)))
 
 sampleDistMatrix <- as.matrix(sampleDists)
+
 rownames(sampleDistMatrix) <- paste(rld$place, rld$seq_ID, sep="-")
 colnames(sampleDistMatrix) <- NULL
 colors <- colorRampPalette(rev(brewer.pal(9, "Reds")) )(255)
@@ -108,7 +110,6 @@ mat <- mat |>
 # annotate the heatmap
 df <- as.data.frame(colData(rld)[,c("place", "patient")])
 
-
 col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
 pat_col <-natparks.pals("Arches2", 15)
 names(pat_col)<-levels(df$patient)
@@ -127,8 +128,6 @@ pheatmap(mat,
          border_color = NA)
          #scale = "row")#scale = "row" uses Z-scores, rather then normalized count values
        dev.off() 
-
-
 
 ```
 
@@ -167,6 +166,7 @@ results_PAS_ctrl2$gene_label[1:20] <- results_PAS_ctrl2$gene_name[1:20]
 
 
 
+
 ggplot(results_PAS_ctrl2, 
        aes(x = log2FoldChange, y = -log10(padj))) +
     geom_point(aes(colour = threshold_OE)) +
@@ -181,12 +181,16 @@ ggplot(results_PAS_ctrl2,
           axis.title = element_text(size = rel(1.25))) +
   scale_color_manual(values= natparks.pals("Arches2", 2))
 
+       
+
+
 ```
 
 ## Biological theme comparison based on clusters 
 
 ```{r}
 #### move this to the top
+
 
 # For this analysis you need a list of genes created with degPatterns, 1.0_metadata_exploratioj
 

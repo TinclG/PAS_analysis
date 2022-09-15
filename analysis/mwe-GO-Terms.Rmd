@@ -1,0 +1,154 @@
+---
+title: "MWE"
+output: html_notebook
+---
+# Minimal Working Example GO-Terms
+
+```{r}
+library(tidyverse)
+library(org.Hs.eg.db)
+library(topGO)
+library(pcaExplorer)
+library(clusterProfiler)
+library(ReactomePA)
+
+# Required data: (From notebook: 1.0_metadata_exploration.rmd)
+# (1) Test results PAS vs. Ctrl and 
+# (2) CtrlMus vs. Ctrl, both unfiltered!
+
+results_PAS_ctrl
+results_mus_ctrl
+```
+
+## (1) Prepare input data
+First subset for genes with padj < 0.05 in both test results. Remove significant genes in CtrlMus vs. Ctrl from PAS vs. Ctrl.
+```{r}
+# Get significant genes to remove from CtrlMus vs. Ctrl comparison
+rm <- results_mus_ctrl |>
+  subset(padj < 0.05) |>
+  rownames_to_column(var = "gene_id") |>
+  pull(gene_id)
+
+dat <- results_PAS_ctrl |>
+  rownames_to_column(var = "gene_id")|>
+  subset(!gene_id %in% rm)
+
+# Define significance threshold and divide into up and down genes based on logFC
+genes <- dat |> subset(padj < 0.05) |> pull(gene_id)
+up_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange > 0) |> pull(gene_id)
+dn_genes <- dat |> subset(padj < 0.05 & dat$log2FoldChange < 0) |> pull(gene_id)
+all_genes <- dat |> pull(gene_id)
+
+```
+
+## (2) Run TopGO with Biological (BP) process and Molecular function (MF)
+```{r}
+upRes <- lapply(c("BP", "MF"), function(ontology) {
+  topgoDE <- topGOtable(DEgenes = up_genes,
+                        BGgenes = all_genes,
+                        ontology = ontology,
+                        mapping = "org.Hs.eg.db",
+                        geneID = "ENSEMBL")
+  })
+upRes
+```
+
+
+## (3) Run other ORA tests
+```{r}
+# Add ENTREZ IDs
+ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(dat$gene_id),
+                                           keytype = "ENSEMBL",
+                                           columns = c("ENTREZID"))
+
+dat <- dat |> inner_join(ensembl_to_entrez, by = c("gene_id" = "ENSEMBL"))
+
+universe <- unique(dat$ENTREZID)
+genes <- dat |> subset(padj < 0.05) |> pull(ENTREZID) |> unique()
+```
+
+```{r}
+# KEGG pathway over-representation analysis
+Kegg <- enrichKEGG(
+  gene = genes,
+  universe = universe,
+  organism = 'hsa',
+  pvalueCutoff = 0.05)
+```
+```{r}
+Reactome <- enrichPathway(
+  gene = genes,
+  organism = "human",
+  universe = universe,
+  pvalueCutoff = 0.05,
+  readable = TRUE)
+
+as_tibble(Reactome@result)
+```
+
+```{r}
+WikiPathway <- enrichWP(
+  gene = genes,
+  universe = universe,
+  organism = 'Homo sapiens',
+  pvalueCutoff = 0.05)
+
+as_tibble(WikiPathway@result)
+```
+
+## Finer control on GO term tests
+
+```{r}
+ontology <- "BP"
+#ontology <- "CC" #(Cellular Component)
+#ontology <- "MF" #(Molecular Function)
+
+# Decide test algorithm
+algorithm <- "weight01"
+#algorithm <- "classic"
+#algorithm <- "elim"
+#algorithm <- "weight"
+#algorithm <- "lea"
+#algorithm <- "parentchild"
+
+# Define the statistical test used
+# For tests based on gene counts
+statistic <- "fisher"      # Fischer's exact test
+#For tests based on gene scores or gene ranks
+#statistic <- "ks"         # Kolmogorov-Smirnov test
+#statistic <- "t"          # t-test
+# For tests based on gene expression
+#statistic <- "globaltest" # globaltest
+
+
+# Produce list of up's
+upList <- factor(as.integer(all_genes %in% up_genes))
+names(upList) <- all_genes
+
+upGOdata <- new("topGOdata", ontology = ontology, allGenes = upList, geneSel = function(x)(x == 1), 
+                nodeSize = 10, annot = annFUN.org, mapping = "org.Hs.eg.db", ID = "ENSEMBL")
+
+upRes <- runTest(upGOdata, algorithm = algorithm, statistic = statistic)
+
+# Create result table
+# Build up result table
+up_tab <- GenTable(upGOdata, Pval = upRes, topNodes = 20)
+
+# Update table with full GO term name
+# Update up table 
+up_tab$Term <- sapply(up_tab$"GO.ID", function(go) Term(GO.db::GOTERM[[go]]))
+
+up_sigGenes <- sigGenes(upGOdata)
+
+# Retrieve gene symbols for each GO from the test result
+up_AnnoList <- lapply(up_tab$"GO.ID", 
+                      function(x) as.character(unlist(genesInTerm(object = upGOdata, whichGO = x))))
+
+up_SigList <- lapply(up_AnnoList, function(x) intersect(x, up_sigGenes))
+
+#Coerce gene list to a comma-separated vector
+up_tab$Genes <- sapply(up_SigList, paste, collapse = ",")
+
+# Cbind first 5 up 
+cbind(head(up_tab$Genes, 5))
+```
