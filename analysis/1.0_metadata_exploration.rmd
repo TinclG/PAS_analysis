@@ -314,7 +314,7 @@ clusters <- degPatterns(rld3,
                         col = NULL)
 
 #Extracting the genes from the cluster
-clust_1 <- 1
+#clust_1 <- 1
 clust_3 <- 3
 
 cluster_2_genes <- clusters$df |>
