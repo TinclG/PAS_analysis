@@ -3,11 +3,21 @@ title: "PCAExpl.rmd"
 output: html_document
 author: Tina Gorsek Sparovec
 date: 10.2.21
+params:
+ data: "../data"
+ results: "../res"
+ lib: "../lib"
+ maxcores: 6
+output:
+ html_notebook:
+ theme: spacelab
+ highlight: textmate
+ toc: yes
+ number_sections: true
+ toc_depth: 3
+ toc_float: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 # using the package pcaExplorer and clusterprofiler
 you need to use the data with the symbol and entrez
 https://bioconductor.statistik.tu-dortmund.de/packages/3.6/bioc/vignettes/clusterProfiler/inst/doc/clusterProfiler.html#dotplot 
@@ -91,7 +101,7 @@ https://bioconductor.org/packages/devel/bioc/vignettes/pcaExplorer/inst/doc/pcaE
 #using res, anno, PAS 
 dds_GO <- DESeq(dds)
 res<- results(dds_GO)
-ENS_res<- merge(as.data.frame(res), PASbackup, by.y="gene_id", by.x= "row.names")
+ENS_res<- merge(as.data.frame(res), KEY, by.y="gene_id", by.x= "row.names")
 ENS_res$Row.names<-gsub("\\..*","",ENS_res$Row.names)
 rownames(ENS_res)<-make.names(ENS_res$Row.names, unique=T) #renaming the rownames
 #names(ENS_res)[names(ENS_res) == "Row.names"] <- "gene_id"

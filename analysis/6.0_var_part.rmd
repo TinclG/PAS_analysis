@@ -36,42 +36,62 @@ Needs normalised expression values
 2) metadata
 3) model
 ```{r, include=FALSE}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+#if (!require("BiocManager", quietly = TRUE))
+ #   install.packages("BiocManager")
 
-BiocManager::install("variancePartition")
-library("variancePartition")
-library("ggplot2")
-library("limma")
-library("BiocParallel")
-library("DESeq2")
-library("tidyverse")
-#data used sig.res and anno metadata
+#BiocManager::install("variancePartition")
+library(variancePartition)
+library(limma)
+library(BiocParallel)
+library(DESeq2)
+library(tidyverse)
+
+#data are sourced from analysis/1.0 metadata
+
+sig.res 
+anno 
 ```
+## From the vignette
 
-```{r}
+```{r example}
 #example
 data(varPartData)
-form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)
+form<-~Age+ (1|Individual) + (1| Tissue) + (1| Batch)a
 varPart<- fitExtractVarPartModel( geneExpr, form, info)
 vp<-sortCols(varPart)
 plotPercentBars(vp[1:10,])
 plotVarPart(vp)
 ```
 
+## Variance partition PAS
+
+Working on the rlog results
 ```{r}
-dds<-estimateSizeFactors(dds) # tries to get rid of the variations between samples
-expr<- rowSums(fpm(dds)>1) >= 0.5* ncol(dds)
+dds<-estimateSizeFactors(dds) 
+expr <- rowSums(assay(rlog(dds))>1) >= 0.5* ncol(dds)
 
 #transformation, plus filter for the genes that pass the 0.05
-quantlog<-log2(fpm(dds)[expr,] +1)
+quantlog<-log2(assay(rlog(dds))[expr,] +1)
 
-form <- ~(weight+ Grav + Para + sectio + Csec+ place) #which one is categorical, fixed or continuous
+#changing the ENSEMBL to Gene names
+
+quantlog <-  merge(as.data.frame(quantlog), 
+                 KEY, 
+                 by.y="gene_id", 
+                 by.x= "row.names")
+quantlog <-quantlog[!duplicated(quantlog$gene_name),]
+quantlog <-  quantlog |>
+  select(-Row.names)|>
+  remove_rownames()|>
+  column_to_rownames(var ="gene_name")
+
+form <- ~( Grav + Para + Csec+ place) #which one is categorical, fixed or continuous
 #uses rld table results for input
-varPart_pas<- fitExtractVarPartModel(quantlog,form, anno) #problem
+varPart_pas <- fitExtractVarPartModel(quantlog,form, anno) #problem
 plotVarPart(varPart_pas)
-?fitExtractVarPartModel
+
 ```
+
 ```{r}
 # plot of varienace fractions for a subset of genes
 plotPercentBars(varPart_pas[1:10,], col = c(ggColorHue(ncol(varPart_pas) - 1), "grey85"))
@@ -83,7 +103,7 @@ How to get the genes not the ensemble ID?
 
 ```{r}
 sortCols(varPart_pas)
-plotVarPart( sortCols( varPart_pas ) )
+plotVarPart(sortCols(varPart_pas ) )
 ```
 
 

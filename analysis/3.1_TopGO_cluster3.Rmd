@@ -1,0 +1,308 @@
+---
+title: "3.1_TopGO_clusters"
+author: "Tina Gorsek"
+date: '2022-07-20'
+output:
+  html_document:
+    df_print: paged
+  theme: spacelab
+  highlight: textmate
+  toc: yes
+  number_sections: yes
+  toc_depth: 3
+  toc_float: yes
+  html_notebook: null
+params:
+  data: ../data
+  results: ../res
+  lib: ../lib
+  maxcores: 6
+---
+
+
+
+```{r}
+library(tidyverse)
+require(org.Hs.eg.db)
+library(janitor)
+library(topGO)
+library(ALL)
+library(pcaExplorer)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+library(enrichplot)
+
+
+#BiocManager::install("hgu95av2.db")
+
+# Required data: from notebook 1.0_metadata_exploration
+
+# (1) subtraction/subset of the genes from clusters 
+
+#*cluster_4_genes
+
+# (2) list of gene IDs from result_PAS_ctrl and results_MusCtrl_Ctrl
+
+#*results_PAS_ctrl
+#*results_mus_ctrl
+
+
+
+```
+
+##Preparing the input data
+
+```{r}
+#Merging the df cluster_3_genes with gene_ids
+c2 <- merge(as.data.frame(cluster_2_genes), 
+                 KEY, 
+                 by="gene_id")
+
+residual <- results_mus_ctrl |>
+  subset(padj < 0.05) |>
+  rownames_to_column(var = "gene_id") |>
+  pull(gene_id)
+
+PAS_ctrl <- results_PAS_ctrl |>
+  rownames_to_column(var = "gene_id")|>
+  subset(!gene_id %in% residual) 
+
+all_genes <- PAS_ctrl |>
+  pull(gene_id)
+
+#Extracting the gene_names from cluster_3_genes
+
+genes <- c2 |>
+  pull(gene_name.x)
+
+Genes <- c2 |>
+  pull(gene_id)
+
+
+
+```
+
+##topGotable on Biological pathways ("BF") and Molecular function ("MF")
+
+Extract functional terms enriched in the DE genes, based on topGO
+
+```{r}
+Res <- lapply(c("BP", "MF"), function(ontology) {
+  topgode <- topGOtable(DEgenes = Genes,
+                        BGgenes = all_genes,
+                        ontology = ontology,
+                        mapping = "org.Hs.eg.db",
+                        geneID= "ENSEMBL"
+                        )
+  })
+
+
+Res
+
+```
+
+ 
+## Adding a column with ENTREZ ID 
+ 
+ 
+```{r ENTREZ}
+ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(c2$gene_id),
+                                           keytype = "ENSEMBL",
+                                           columns = c("ENTREZID"))
+c2 <- c2 |> inner_join(ensembl_to_entrez, by = c("gene_id" = "ENSEMBL"))
+#c2$ENTREZID <- mapIds(org.Hs.eg.db,
+                       #keys=c2$genes, 
+                        #column="ENTREZID",
+                        #keytype="ENSEMBL",
+                        #multiVals="first")
+
+universe <- unique(PAS_ctrl$ENTREZID)
+genes <- c2 |>
+  pull(ENTREZID) |> 
+  unique()
+```
+## KEEGG pathway over-representation analasis
+ 
+[Biomedical knowledge mining using GOSemSim and clusterProfiler](https://yulab-smu.top/biomedical-knowledge-mining-book/clusterprofiler-kegg.html)
+
+KEGG is a collection of manually drawn pathway maps representing molecular interaction and reaction networks. These pathways cover a wide range of biochemical processes that can be divided into 7 broad categories.
+
+Over Representation Analysis (ORA) (Boyle et al. 2004) is a widely used approach to determine whether known biological functions or processes are over-represented (= enriched) in an experimentally-derived gene list, e.g. a list of differentially expressed genes (DEGs).
+
+```{r}
+
+Kegg <- enrichKEGG(gene = genes,
+                   organism = 'hsa',
+                   universe = universe,
+                   pvalueCutoff = 0.05)
+
+
+summary_Kegg <- slot(Kegg, "result") %>%
+  as_tibble() 
+
+#write.csv(summary_Kegg, "KEGG_PAS_Ctrl.csv")
+
+```
+
+## Reactome enrich analysis
+
+Reactome uses hypergeometric model (one sided version of Fishers exact test) to asses whether the number of selected genes associated with a reactome pathway is larger then expected. 
+
+```{r reactome}
+R_PA<-enrichPathway(gene = genes, 
+                    organism = "human",
+                    universe = universe,
+                    pvalueCutoff = 0.05, 
+                    readable = T)
+
+as_tibble(R_PA@result)
+
+#write.csv(R_PA@result, "Reactome_PAS_Ctrl.csv")
+```
+## Wiki pathway
+
+WikiPathways is a continuously updated pathway database curated by a community of researchers and pathway enthusiasts. WikiPathways produces monthly releases of gmt files for supported organisms at data.wikipathways.org
+
+```{r}
+Wiki_pathway <- enrichWP(gene = genes, 
+                         universe = universe,
+                         organism = "Homo sapiens",
+                         pvalueCutoff = 0.05)
+
+as_tibble(Wiki_pathway@result)
+```
+[Differences between KEGG, Reactome and Wiki Pathway](https://www.frontiersin.org/articles/10.3389/fgene.2019.01203/full)
+```{r}
+#ontology <- "BP" #(Biological Pathway)
+#ontology <- "CC" #(Cellular Component)
+ontology <- "MF" #(Molecular Function)
+
+# Decide test algorithm
+algorithm <- "weight01"
+#algorithm <- "classic"
+#algorithm <- "elim"
+#algorithm <- "weight"
+#algorithm <- "lea"
+#algorithm <- "parentchild"
+
+# Define the statistical test used
+# For tests based on gene counts
+statistic <- "fisher"      # Fischer's exact test
+
+#For tests based on gene scores or gene ranks
+#statistic <- "ks"         # Kolmogorov-Smirnov test
+#statistic <- "t"          # t-test
+
+# For tests based on gene expression
+#statistic <- "globaltest" # globaltest
+
+#GO analysis on all DEG
+List <- factor(as.integer(all_genes %in% Genes))
+names(List) <- all_genes
+GOdata <- new("topGOdata", 
+                ontology = ontology, 
+                allGenes = List, 
+                geneSel = function(x)(x == 1), 
+                nodeSize = 10, 
+                annot = annFUN.org, 
+                mapping = "org.Hs.eg.db", 
+                ID = "ENSEMBL")
+
+
+#adjusting of p-val
+Res_GO <- runTest(GOdata, 
+                 algorithm = algorithm, 
+                 statistic = statistic)
+Res_GO
+
+# Build result table of all DEG
+tab <- GenTable(GOdata, Fisher = Res_GO, Pval = Res_GO, topNodes = 20)
+
+# Update table with full GO term name
+# Update table 
+tab$Term <- sapply(tab$"GO.ID", 
+                      function(go) Term(GO.db::GOTERM[[go]]))
+sigGenes <- sigGenes(GOdata)
+
+# Retrieve gene symbols for each GO from the test result
+AnnoList <- lapply(tab$"GO.ID", 
+                      function(x) as.character(unlist(genesInTerm(object = GOdata, whichGO = x))))
+SigList <- lapply(AnnoList, function(x) intersect(x, sigGenes))
+
+#Coerce gene list to a comma-separated vector
+tab$Genes <- sapply(SigList, paste, collapse = ",")
+# Cbind first 5 up 
+cbind(head(tab$Genes, 5))
+
+#assigning gene names to the table 
+tab_merged <- merge(tab, 
+                 KEY, 
+                 by.x="Genes",
+                 by.y="gene_id")
+
+
+```
+
+```{r}
+#Bar plot reactome results
+barplot(R_PA, showCategory = 20)
+mutate(R_PA, qscore = -log(p.adjust, base = 10)) |>
+    barplot(x="qscore")
+
+#Dot plot reactome results
+dotplot(R_PA, showCategory=30) + 
+  ggtitle("dotplot for ORA")
+
+
+#dotplot GO
+tab$Pval <- as.numeric(tab$Pval)
+tab <- tab[tab$Pval < 0.05,]
+tab <- tab[,c("GO.ID","Term","Pval")]
+tab
+
+ntop <- 20
+ggdata <- tab[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+ggplot(ggdata,
+  aes(x = Term, y = -log10(Pval), size = -log10(Pval), fill = -log10(Pval))) +
+
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = 'blue', high = 'red') +
+
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO MF analysis') +
+    #subtitle = 'Top 50 terms ordered by Kolmogorov-Smirnov p-value',
+    #subtitle = 'Top 20 terms ordered by Fisher Exact p-value',
+    #caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+
+  coord_flip()
+```

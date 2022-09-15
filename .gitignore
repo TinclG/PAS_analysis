@@ -10,3 +10,6 @@ res/
 .Rproj.user
 .Rhistory
 .RData
+.DS_Store
+*.html
+*.csv

@@ -31,8 +31,13 @@ library(genefilter)
 library(RColorBrewer)
 library(vsn)
 library(ggrepel)
-devtools::install_github("kevinsblake/NatParksPalettes", force = TRUE)
+library(ggnewscale)
+#devtools::install_github("kevinsblake/NatParksPalettes", force = TRUE)
 library(NatParksPalettes)
+library(viridisLite)
+library(viridis)
+
+conflict_prefer("rowVars", "genefilter")
 
 # Required data:
 
@@ -66,7 +71,8 @@ aim: assesing the overall similarity between the samples- which samples are simi
 sampleDists <- dist(t(assay(rld)))
 
 sampleDistMatrix <- as.matrix(sampleDists)
-rownames(sampleDistMatrix) <- paste(rld$place, rld$sample_ID, sep="-")
+
+rownames(sampleDistMatrix) <- paste(rld$place, rld$seq_ID, sep="-")
 colnames(sampleDistMatrix) <- NULL
 colors <- colorRampPalette(rev(brewer.pal(9, "Reds")) )(255)
 pheatmap(sampleDistMatrix,
@@ -79,7 +85,7 @@ pheatmap(sampleDistMatrix,
 
 [heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
 ```{r}
-topVarGenes <- head(order(-rowVars(assay(rld))),50) 
+topVarGenes <- head(order(-rowVars(assay(rld))),60) 
 
 mat <- assay(rld)[ topVarGenes, ]
 mat <- mat - rowMeans(mat)
@@ -104,14 +110,24 @@ mat <- mat |>
 # annotate the heatmap
 df <- as.data.frame(colData(rld)[,c("place", "patient")])
 
+col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
+pat_col <-natparks.pals("Arches2", 15)
+names(pat_col)<-levels(df$patient)
 
+ann_col <- list(
+  patient = pat_col,
+  place = c(Ctrl = "#440154FF", PAS = "#404688FF", CtrlMus = "#287C8EFF"))
 
+pdf(file = file.path(params$res, "heatmap.pdf"),width = 8, height = 10)
 pheatmap(mat, 
-         annotation_col=df)
-         #scale = "row",#scale = "row" okits Z-scores, rather then normalized count values
-         
-
-
+         annotation_col=df,
+         color = viridis(10),
+         annotation_colors = ann_col,
+        annotation_names_col = T,
+        
+         border_color = NA)
+         #scale = "row")#scale = "row" uses Z-scores, rather then normalized count values
+       dev.off() 
 
 ```
 
@@ -150,7 +166,9 @@ results_PAS_ctrl2$gene_label[1:20] <- results_PAS_ctrl2$gene_name[1:20]
 
 
 
-ggplot(results_PAS_ctrl2, aes(x = log2FoldChange, y = -log10(padj))) +
+
+ggplot(results_PAS_ctrl2, 
+       aes(x = log2FoldChange, y = -log10(padj))) +
     geom_point(aes(colour = threshold_OE)) +
     geom_text_repel(aes(label= gene_label), max.overlaps = Inf) +
     ggtitle("PAS overexpression") +
@@ -160,7 +178,11 @@ ggplot(results_PAS_ctrl2, aes(x = log2FoldChange, y = -log10(padj))) +
     #scale_y_continuous(limits = c(0,50)) +
     theme(legend.position = "none",
           plot.title = element_text(size = rel(1.5), hjust = 0.5),
-          axis.title = element_text(size = rel(1.25))) 
+          axis.title = element_text(size = rel(1.25))) +
+  scale_color_manual(values= natparks.pals("Arches2", 2))
+
+       
+
 
 ```
 
@@ -169,12 +191,48 @@ ggplot(results_PAS_ctrl2, aes(x = log2FoldChange, y = -log10(padj))) +
 ```{r}
 #### move this to the top
 
-# For this analysis you need "genes", a vector of ENTREZID DEG 
-genes
 
-cluster_comp <- compareCluster(genes,
-                               fun = "enrichKEGG",
-                               organism = 'hsa',
-                               pvalueCutoff = 0.05)
+# For this analysis you need a list of genes created with degPatterns, 1.0_metadata_exploratioj
+
+clust_df <- clusters$df
+clusters$plot
+
+#adding a column with ENTREZID
+clust_df$ENTREZID <- mapIds(org.Hs.eg.db,
+                       keys=clust_df$genes, 
+                        column="ENTREZID",
+                        keytype="ENSEMBL",
+                        multiVals="first")
+
+
+#extracting a list with genes of each cluster
+clust <- c(1:4)
+list<-list()
+for(i in 1:length(clust)) {
+c<- clust_df |>
+  filter(cluster == i) |>
+  pull(ENTREZID)
+  
+list[[i]]<- c
+}
+
+list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
+
+#comparing clusters
+
+cluster_comp <- compareCluster(clusters,
+                               fun = "enrichPathway",
+                               organism = 'human',
+                               pvalueCutoff = 0.5)
+                               #OrgDb='org.Hs.eg.db')
+cluster_comp <- pairwise_termsim(cluster_comp)
+
+p1 <- emapplot(cluster_comp)
+p2 <- emapplot(cluster_comp, legend_n=2) 
+p3 <- emapplot(cluster_comp, pie="count")
+p4 <- emapplot(cluster_comp, pie="count", cex_category=1.5, layout="nicely")
+cowplot::plot_grid(p1, p2, p3, p4, ncol=2, labels=LETTERS[1:4])
+
+
 ```
 
