@@ -80,6 +80,7 @@ pheatmap(sampleDistMatrix,
          clustering_distance_cols=sampleDists,
          col=colors)
 ```
+[] use the IDs for the y axis
 
 ## Gene clustering/heatmap with dendogram
 
@@ -130,6 +131,9 @@ pheatmap(mat,
        dev.off() 
 
 ```
+[] try to plot the genes of the cluster 3
+[] you can make this for the GO results
+[] instead of place/pat you can use the GO term- add to metadata
 
 ## vulcano plots
 
@@ -161,16 +165,22 @@ results_PAS_ctrl2 <-merge(as.data.frame(results_PAS_ctrl2),
 results_PAS_ctrl2 <- results_PAS_ctrl2 |>
   arrange(padj) 
 
-#naming first 20 genes in a separate column
-results_PAS_ctrl2$gene_label[1:40] <- results_PAS_ctrl2$gene_name[1:40]
+#naming first genes in a separate column
+#results_PAS_ctrl2$gene_label <- results_PAS_ctrl2$gene_name
 
 
+## Kegg anaylsis genes: TGF-beta signaling pathway
+TGF_sig <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
 
+## R_PA analysis genes:
+#Signaling by TGFB family members
+sig_TGFB_path <- c( "CHRDL1","SERPINE1", "PMEPA1", "INHBA", "SMAD3", "FBN1", "ACVR1C", "FSTL1", "TGFB2", "FURIN", "TGIF1")
 
+results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = TGF_sig)
 ggplot(results_PAS_ctrl2, 
        aes(x = log2FoldChange, y = -log10(padj))) +
     geom_point(aes(colour = threshold_OE)) +
-    geom_text_repel(aes(label= gene_label), max.overlaps = Inf) +
+    geom_text_repel(aes(label= genelabels), max.overlaps = Inf) +
     ggtitle("PAS overexpression") +
     xlab("log2 fold change") + 
     ylab("-log10 adjusted p-value") +
@@ -179,10 +189,12 @@ ggplot(results_PAS_ctrl2,
     theme(legend.position = "none",
           plot.title = element_text(size = rel(1.5), hjust = 0.5),
           axis.title = element_text(size = rel(1.25))) +
-  scale_color_manual(values= natparks.pals("Arches2", 2))
+  scale_color_manual(values= c("#B46DB3", "#E3A5D6"))
 
        
 ```
+[] label just the most interesting genes
+
 ? is it a good idea to label only the genes that would be of interest?
 ## Biological theme comparison based on clusters 
 
@@ -208,28 +220,24 @@ clust <- c(1:4)
 list<-list()
 for(i in 1:length(clust)) {
 c<- clust_df |>
+  rownames_to_column(var = "gene_id") |>
+  left_join(KEY) |>
+  relocate(gene_name, .after = gene_id) |>
   filter(cluster == i) |>
-  pull(ENTREZID)
+  select(-genes) |> 
+  pull(gene_name)
   
 list[[i]]<- c
 }
 
 list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
 
-#comparing clusters
 
-cluster_comp <- compareCluster(clusters,
-                               fun = "enrichPathway",
-                               organism = 'human',
-                               pvalueCutoff = 0.5)
-                               #OrgDb='org.Hs.eg.db')
-cluster_comp <- pairwise_termsim(cluster_comp)
 
-p1 <- emapplot(cluster_comp)
-p2 <- emapplot(cluster_comp, legend_n=2) 
-p3 <- emapplot(cluster_comp, pie="count")
-p4 <- emapplot(cluster_comp, pie="count", cex_category=1.5, layout="nicely")
-cowplot::plot_grid(p1, p2, p3, p4, ncol=2, labels=LETTERS[1:4])
+
+```
+## heatmap with wiki_pathways 
+```{r}
 
 
 ```
