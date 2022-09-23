@@ -236,9 +236,9 @@ list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
 
 
 ```
-## heatmap with wiki_pathways 
+## heatmap with GO terms
 ```{r}
-
+# https://d-nb.info/1202186009/34 
 
 ```
 
