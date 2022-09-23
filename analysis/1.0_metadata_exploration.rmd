@@ -138,6 +138,13 @@ keep<-rowSums(counts(dds)) >=10
 dds<-dds[keep,]
 
 #saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign_noout.rds"))
+
+data <- plotCounts(dds, gene= "ENSG00000000003",
+           intgroup = "place",
+           returnData = TRUE)
+ggplot(data, aes(x = place, y= count))+
+  geom_point(aes(fill=place))
+  
 ```
 
 # running the Differential expression analysis
