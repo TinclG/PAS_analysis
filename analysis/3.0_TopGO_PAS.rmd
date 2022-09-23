@@ -91,7 +91,6 @@ genes_names <- ENS_sig |>
 
 #all genes expressed as a background
 
-
 all_genes_names <- names(keep)
 
 ```
@@ -101,9 +100,10 @@ all_genes_names <- names(keep)
 Extract functional terms enriched in the DE genes, based on topGO
 
 ```{r}
+#[]use the gene names instead of ensembl 
 Res <- lapply(c("BP", "MF"), function(ontology) {
   topgode <- topGOtable(DEgenes = genes,
-                        BGgenes = all_genes_names,
+                        BGgenes = all_genes,
                         ontology = ontology,
                         mapping = "org.Hs.eg.db",
                         geneID= "ENSEMBL"
