@@ -100,7 +100,7 @@ Res <- lapply(c("BP", "MF"), function(ontology) {
 Res
 
 ```
-
+plot the counts with the different factors
  
 ## Adding a column with ENTREZ ID 
  
@@ -168,7 +168,7 @@ Wiki_pathway <- enrichWP(gene = genes,
                          universe = universe,
                          organism = "Homo sapiens",
                          pvalueCutoff = 0.05)
-
+Wiki_pathway <- setReadable(Wiki_pathway, org.Hs.eg.db, keyType = "ENTREZID")
 as_tibble(Wiki_pathway@result)
 ```
 [Differences between KEGG, Reactome and Wiki Pathway](https://www.frontiersin.org/articles/10.3389/fgene.2019.01203/full)
