@@ -338,15 +338,17 @@ ggplot(ggdata,
 
 To do:
 
-We cont with likelihood ratio test, ~ for the model use also other factors that influence- you need even number of comparison (6=6)
 variance partition package https://rdrr.io/bioc/variancePartition/f/inst/doc/variancePartition.pdf 
 
-doing heatmap using the genes (done)
+doing heatmap using the genes 
+[x]cluster genes
+[] pathway genes
 
-age clust by similarity
+[] finish updating color palette in viz
+[] select the GO for cell prolif, cell-cell or cell-matrix communication, wound healing 
 
-- topGOtable
-- pathways and functions - make a table 
+
+
 
 
  
