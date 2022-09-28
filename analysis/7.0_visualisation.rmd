@@ -36,6 +36,7 @@ library(ggnewscale)
 library(NatParksPalettes)
 library(viridisLite)
 library(viridis)
+library(VennDiagram)
 
 conflict_prefer("rowVars", "genefilter")
 
@@ -55,7 +56,21 @@ dds
 
 
 ```
-
+## Venns diagram of genes
+```{r}
+#results_mus_ctrl 
+#results_mus_PAS
+#results_PAS_ctrl
+PAS_ven <- rownames(sig.res)
+MUS_ven <- rownames(results_mus_PAS)
+ctrl_ven <-rownames(results_mus_ctrl)
+pdf(file = file.path(params$res,"venn_diagram.pdf"))
+venn.plot <- venn.diagram(list(PAS_ven, ctrl_ven, MUS_ven), filename = NULL,
+                          category = c("PAS", "ctrl", "MUS"))
+                                
+grid.draw(venn.plot)
+dev.off()
+```
 
 
 ```{r normalisation}
@@ -72,9 +87,11 @@ sampleDists <- dist(t(assay(rld)))
 
 sampleDistMatrix <- as.matrix(sampleDists)
 
-rownames(sampleDistMatrix) <- paste(rld$place, rld$seq_ID, sep="-")
+rownames(sampleDistMatrix) <- paste(rld$place, 
+                                    anno$patient,
+                                    sep="-")
 colnames(sampleDistMatrix) <- NULL
-colors <- colorRampPalette(rev(brewer.pal(9, "Reds")) )(255)
+colors <- c(magma(20))
 pheatmap(sampleDistMatrix,
          clustering_distance_rows=sampleDists,
          clustering_distance_cols=sampleDists,
@@ -86,7 +103,9 @@ pheatmap(sampleDistMatrix,
 
 [heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
 ```{r}
-topVarGenes <- head(order(-rowVars(assay(rld))),60) 
+
+#selecting 20.000 genes for the heatmap
+topVarGenes <- head(order(-rowVars(assay(rld))), 20000) 
 
 mat <- assay(rld)[ topVarGenes, ]
 mat <- mat - rowMeans(mat)
@@ -107,29 +126,56 @@ mat <- mat |>
   remove_rownames()|>
   column_to_rownames(var= "gene_name")
 
-
+# selecting the cluster genes
+#cluster 1 and cluster 3
+matclust_3 <- mat |> 
+  filter(row.names(mat) %in% c(cluster_2_genes$gene_name[1:25]))
+matclust_1 <- mat |> 
+  filter(row.names(mat) %in% c(cluster_1_genes$gene_name[1:25]))
+matclust <- c(matclust_1, matclust_3)
 # annotate the heatmap
 df <- as.data.frame(colData(rld)[,c("place", "patient")])
+df <- df |> 
+  select(place)
+
 
 col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
 pat_col <-natparks.pals("Arches2", 15)
 names(pat_col)<-levels(df$patient)
 
 ann_col <- list(
-  patient = pat_col,
-  place = c(Ctrl = "#440154FF", PAS = "#404688FF", CtrlMus = "#287C8EFF"))
+ # patient = pat_col,
+  place = c(Ctrl = "#fd9668", PAS = "#9e2f7f", CtrlMus = "#440f76"))
 
-pdf(file = file.path(params$res, "heatmap.pdf"),width = 8, height = 10)
-pheatmap(mat, 
+pdf(file = file.path(params$res, "heatmap_clust.pdf"),width = 10, height = 10)
+ ph3 <- pheatmap(matclust_3, 
          annotation_col=df,
-         color = viridis(10),
+         color = magma(10),
          annotation_colors = ann_col,
-        annotation_names_col = T,
-        
-         border_color = NA)
-         #scale = "row")#scale = "row" uses Z-scores, rather then normalized count values
+         annotation_names_col = T,
+         border_color = NA,
+         main = "Upregulated genes in PAS")
+ ph1 <- pheatmap(matclust_1, 
+         annotation_col=df,
+         color = magma(10),
+         annotation_colors = ann_col,
+         annotation_names_col = T,
+         border_color = NA,
+         legend = FALSE,
+         main = "Downregulated genes in PAS",
+        annotation_legend = FALSE )
+ plot_list <- list()
+plot_list[["ph1"]] <- ph1[[4]]
+plot_list[["ph3"]] <- ph3[[4]]
+gridExtra::grid.arrange(grobs = plot_list, ncol =2)
+   
        dev.off() 
 
+ 
+plot_list <- list()
+plot_list[["ph1"]] <- ph1[[4]]
+plot_list[["ph3"]] <- ph3[[4]]
+gridExtra::grid.arrange(grobs = plot_list, ncol =2)
 ```
 [] try to plot the genes of the cluster 3
 [] you can make this for the GO results
@@ -179,7 +225,7 @@ sig_TGFB_path <- c( "CHRDL1","SERPINE1", "PMEPA1", "INHBA", "SMAD3", "FBN1", "AC
 results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = TGF_sig)
 ggplot(results_PAS_ctrl2, 
        aes(x = log2FoldChange, y = -log10(padj))) +
-    geom_point(aes(colour = threshold_OE)) +
+    geom_point(aes(colour = threshold_OE), size = 1) +
     geom_text_repel(aes(label= genelabels), max.overlaps = Inf) +
     ggtitle("PAS overexpression") +
     xlab("log2 fold change") + 
@@ -189,7 +235,8 @@ ggplot(results_PAS_ctrl2,
     theme(legend.position = "none",
           plot.title = element_text(size = rel(1.5), hjust = 0.5),
           axis.title = element_text(size = rel(1.25))) +
-  scale_color_manual(values= c("#B46DB3", "#E3A5D6"))
+  scale_color_manual(values= c( "#ca3e72", "#feca8d")) +
+  theme_bw()
 
        
 ```
@@ -239,6 +286,22 @@ list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
 ## heatmap with GO terms
 ```{r}
 # https://d-nb.info/1202186009/34 
+
+xgen <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
+
+matHM <- mat |> 
+  filter(row.names(mat) %in% xgen)
+
+#selecting annotation_col
+dfx <- as.data.frame(colData(rld))
+dfx <- dfx |> 
+  select(place)
+
+cl <- pheatmap( matHM , annotation_col=dfx,
+        color = magma(90),
+        annotation_colors = ann_col,
+        annotation_names_col = T,
+        border_color = NA)
 
 ```
 
