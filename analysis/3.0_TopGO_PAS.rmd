@@ -85,10 +85,6 @@ all_genes <- PAS_ctrl |>
   pull(gene_id)
 
 
-# objects with gene_names
-genes_names <- ENS_sig |> 
-  pull(gene_name)
-
 #all genes expressed as a background
 
 all_genes_names <- names(keep)
@@ -112,9 +108,8 @@ Res <- lapply(c("BP", "MF"), function(ontology) {
 
 
 Res
-
-
-
+#write.csv(data.frame(Res[1]), file.path(params$results, "Res_BP.csv"))
+#write.csv(data.frame(Res[2]), file.path(params$results, "Res_MF.csv"))
 ```
 
  
@@ -129,7 +124,7 @@ PAS_ctrl$ENTREZID <- mapIds(org.Hs.eg.db,
                         multiVals="first")
 
 universe <- unique(PAS_ctrl$ENTREZID)
-genes <- PAS_ctrl |>
+genes_entrez <- PAS_ctrl |>
   subset(padj < 0.05) |> 
   pull(ENTREZID) |> 
   unique()
@@ -147,7 +142,7 @@ Over Representation Analysis (ORA) (Boyle et al. 2004) is a widely used approach
 
 ```{r}
 
-Kegg <- enrichKEGG(gene = genes,
+Kegg <- enrichKEGG(gene = genes_entrez,
                    organism = 'hsa',
                    universe = universe,
                    pvalueCutoff = 0.05)
@@ -175,22 +170,22 @@ dn_genes <- PAS_ctrl |>
 RESULTS: dn_genes- no significant pathways
 
 ```{r reactome}
-R_PA<-enrichPathway(gene = genes, 
+R_PA<-enrichPathway(gene = genes_entrez, 
                     organism = "human",
                     universe = universe,
                     pvalueCutoff = 0.05, #had to change the pvaluecutoff  to 0.2because there was nothing to plot
                     readable = T)
 
-as_tibble(R_PA@result)
+PA_res <- as_tibble(R_PA@result)
 
-#write.csv(R_PA@result, "Reactome_PAS_Ctrl_all.csv")
+write.csv(PA_res, file.path(params$results, "Reactome_PAS_Ctrl_all.csv"))
 ```
 ## Wiki pathway
 
 WikiPathways is a continuously updated pathway database curated by a community of researchers and pathway enthusiasts. WikiPathways produces monthly releases of gmt files for supported organisms at data.wikipathways.org
 
 ```{r}
-Wiki_pathway <- enrichWP(gene = genes, 
+Wiki_pathway <- enrichWP(gene = genes_entrez, 
                          universe = universe,
                          organism = "Homo sapiens",
                          pvalueCutoff = 0.05)
@@ -202,7 +197,7 @@ Wiki_pathway <- as_tibble(Wiki_pathway@result)
 
 ```
  [] Try with just up an down regulated
- as background use all of the genes that were expressed (from dds class: DESeqDataSet 
+ [x]as background use all of the genes that were expressed (from dds class: DESeqDataSet --> Result: same as using the background genes 
 dim: 22839 18 )-- > potentially could be significant.
 
 ## Finer control of GO term tests
@@ -213,9 +208,9 @@ classic method and therefore one expects the p-values returned by the former met
 are lower bounded by the p-values returned by the later method.
 
 ```{r}
-#ontology <- "BP" #(Biological Pathway)
+ontology <- "BP" #(Biological Pathway)
 #ontology <- "CC" #(Cellular Component)
-ontology <- "MF" #(Molecular Function)
+#ontology <- "MF" #(Molecular Function)
 
 # Decide test algorithm
 algorithm <- "weight01"
@@ -239,7 +234,7 @@ statistic <- "fisher"      # Fischer's exact test
 # A list of up-regulated genes
 # dn_genes
 # up_genes
-upList <- factor(as.integer(all_genes %in% up_genes))
+upList <- factor(as.integer(all_genes %in% genes))
 names(upList) <- all_genes
 
 upGOdata <- new("topGOdata", 
@@ -303,7 +298,7 @@ ggplot(ggdata,
   expand_limits(y = 1) +
   geom_point(shape = 21) +
   scale_size(range = c(2.5,12.5)) +
-  scale_fill_continuous(low = 'blue', high = 'red') +
+  scale_fill_continuous(low = "#8c2981", high = "#fe9f6d") +
 
   xlab('') + ylab('Enrichment score') +
   labs(
