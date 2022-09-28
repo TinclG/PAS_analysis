@@ -167,9 +167,8 @@ results_PAS_ctrl <-results(dds,
                            contrast = c("place", "PAS", "Ctrl"))
 # what about the log for shrinkage? 
 results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
-
 results_PAS_ctrl <-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
-sig.res <- results_PAS_ctrl|>  # using just the signif DEG
+sig.res <- results_PAS_ctrl|>  
   subset(padj<0.05)
 
 
@@ -184,14 +183,13 @@ Results:
 ## mus vs. ctrl
 
 ```{r}
-
 results_mus_ctrl<-results(dds, 
                           filterFun= ihw, 
                           contrast = c("place", "CtrlMus", "Ctrl")) # reference level comes last!
 results_mus_ctrl<- as.data.frame(results_mus_ctrl)
 results_mus_ctrl <-results_mus_ctrl[order(results_mus_ctrl$padj),]
-results_mus_ctrl<- results_mus_ctrl %>%
-  subset(padj < 0.05)
+results_mus_ctrl<- results_mus_ctrl |> 
+  subset(padj < 0.05) 
 ```
 
 ## pas vs mus
@@ -200,7 +198,7 @@ results_mus_ctrl<- results_mus_ctrl %>%
 
 results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "CtrlMus"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
-results_mus_PAS<- results_mus_PAS %>%
+results_mus_PAS<- results_mus_PAS |> 
   subset(padj < 0.05)
 ```
 
@@ -208,6 +206,7 @@ results_mus_PAS<- results_mus_PAS %>%
 
 ```{r}
 #Merging the df into ENS_sig (between PAS and ctrl)
+#[]residual must be the same as ens bg
 ENS_sig <- merge(as.data.frame(sig.res), 
                  KEY, 
                  by.y="gene_id", 
@@ -217,14 +216,18 @@ ENS_bg <- merge(as.data.frame(results_mus_ctrl),
                 KEY, 
                 by.y="gene_id", 
                 by.x= "row.names")
-
-residual <- ENS_bg |>
-  pull(Row.names)
-
+ENS_bg <- ENS_bg |> 
+   subset(padj < 0.05) 
 
 #excluding the rows from the ENS_sig, that appear in the ENS_bg and ENS_sig
-ENS_sig <- ENS_sig |>
-  filter(!ENS_sig$Row.names %in% ENS_bg$Row.names)
+ENS_sig_all <- ENS_sig |> 
+   subset(padj < 0.05) |>
+  pull(gene_name)
+
+ENS_sig_names <- ENS_sig |>
+  subset(!ENS_sig$Row.names %in% ENS_bg$Row.names) |> 
+  pull(gene_name)
+
 
 #<!-- VJM: Removing the ctrlMus genes from the PAS genes is just one idea to get rid of the background. If it doesn't yield many hits I would try to run the downstream analysis with the unfiltered PAS list. Afterwards you can still check what genes were also in the ctrlMus and remove the hits that might not be worth looking at more closely -->
 
@@ -259,42 +262,6 @@ plot(plot)
 ```
 Results: we want to have a transformation that gives us the least outliers. In this case rlog transformation if the best choice. Rlog compresses the differences for genes.
 
-## likelihood test ratio
-
-Instead of rlog transformation we could usse likelihood test ratio. This is more suitable when we have more time points
-
-[Likelihood test ratio workflow](https://hbctraining.github.io/DGE_workshop_salmon/lessons/08_DGE_LRT.html)
-
-```{r likelihood test ratio}
-
-dds_lrt <- DESeq(dds, 
-                 test="LRT", 
-                 full = ~ Grav + Para + Csec + place,
-                 reduced = ~ Grav + Para + Csec )
-
-
-#<!-- VJM: I don't think comparing the full model to the intercept does make much sense for the question you try to address with your data! As I already mentioned this kind of analysis works well with time series data. In addition, you don't have a balanced dataset. -->
-
-
-res_LRT <- results(dds_lrt)
-
-# Summary of results
-summary(res_LRT)
-sum(res_LRT$padj < 0.01, na.rm =TRUE)
-sum(res_LRT$padj < 0.05, na.rm =TRUE)
-
-# Create a tibble for LRT results
-res_LRT_tb <- res_LRT |>
-  data.frame() |>
-  rownames_to_column(var="gene") |>
-  as_tibble() |>
-  filter(padj<0.05) #subsetting for the significant genes
-
-
-# Get number of significant genes and compared it to the wald test 
-nrow(res_LRT_tb)
-nrow(ENS_sig)
-```
 
 # Clustering the genes
 
@@ -321,7 +288,7 @@ clusters <- degPatterns(rld3,
                         col = NULL)
 
 #Extracting the genes from the cluster
-#clust_1 <- 1
+clust_1 <- 1
 clust_3 <- 3
 
 cluster_2_genes <- clusters$df |>
@@ -339,7 +306,8 @@ Comment on the PCA = PA_score needs to be adjusted, CtrlMus uses the PA_Score fr
 
 ```{r}
 
-plotPCA(rld, intgroup="place", ntop=500)+geom_text(aes(label=name),vjust=2)
+plotPCA(rld, intgroup="place", ntop=500) +
+  geom_text(aes(label=name),vjust=2)
 #color on 2 levels place and PAscore
 
 #Plot the PCA using ggplot
@@ -352,18 +320,18 @@ pcaData <- plotPCA(rld,
 percentVar <- round(100 * attr(pcaData, "percentVar"), digits = 1)
 
 p <- ggplot(pcaData, 
-            aes(x = PC1, y = PC2)) +
-  geom_point(aes(fill = PA_score),
-              size = 5,
-              shape = 21) +
+            aes(x = PC1, y = PC2, color = place)) +
+  geom_point(aes(fill = place), size=3) +
   xlab(paste0("PC1: ", percentVar[1], "% variance")) +
   ylab(paste0("PC2: ", percentVar[2], "% variance")) +
-  ggtitle("PCA")
+  ggtitle("PCA") +
+  scale_color_manual(values = c("#fc8961","#b73779", "#180f3d")) +
+  theme_bw()
   
 ```
 ### Different visualisation
 ```{r}
-p <- ggplot(pcaData,
+p2 <- ggplot(pcaData,
             aes(x = PC1, y = PC2)) +
   geom_point(aes(shape = PA_score), size = 5) +
   labs(shape = "PA_score", colour = "place", size = "PA_score")
