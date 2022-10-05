@@ -139,13 +139,11 @@ df <- df |>
   select(place)
 
 
-col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
-pat_col <-natparks.pals("Arches2", 15)
-names(pat_col)<-levels(df$patient)
+#col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
+#pat_col <-natparks.pals("Arches2", 15)
+#names(pat_col)<-levels(df$patient)
 
-ann_col <- list(
- # patient = pat_col,
-  place = c(Ctrl = "#fd9668", PAS = "#9e2f7f", CtrlMus = "#440f76"))
+ann_col <- list(place = c(Ctrl = "#fd9668", PAS = "#9e2f7f", CtrlMus = "#440f76"))
 
 pdf(file = file.path(params$res, "heatmap_clust.pdf"),width = 10, height = 10)
  ph3 <- pheatmap(matclust_3, 
@@ -287,21 +285,40 @@ list <- lapply(list, function(x) x[!is.na(x)]) #omiting NA values
 ```{r}
 # https://d-nb.info/1202186009/34 
 
-xgen <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
-
-matHM <- mat |> 
-  filter(row.names(mat) %in% xgen)
-
 #selecting annotation_col
 dfx <- as.data.frame(colData(rld))
 dfx <- dfx |> 
   select(place)
 
-cl <- pheatmap( matHM , annotation_col=dfx,
-        color = magma(90),
-        annotation_colors = ann_col,
-        annotation_names_col = T,
-        border_color = NA)
+### selected genes
+##Kegg pathway analysis
+tgf <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
+mat_tgf <- mat |> 
+  filter(row.names(mat) %in% tgf)
 
+##BP
+cell_migration <- c("ARX","FYN","HGF","WWC3","HEXB","PIK3CB","KIF2A","GPC4","B4GALT1","PXN","LAMB4","TGFB2","XBP1","SFRP1","PLAT","PTN","SERPINE1","PDLIM1","PDGFRB","IGFBP5","TNFAIP3","PTK2B","CXCR4","ACVR1C","SDC4","TNFSF14","ID1","PODXL","SWAP70","NAV1","ANXA1","CGA","TUBB2A","PRCP","CYP19A1","ANXA3","IQSEC1","PHLDB2","SH3KBP1","GPC3","PSTPIP2","FAM49B","ROBO4","APCDD1","FCER1G","STC1","ACE","S100A11","FSTL1","CCDC141","PITX2","RET","NDEL1","SMAD3","IGFBP6","ULK4","SEMA4C","ATOH8","HAS2","MCC","FZD4","EPHB3","PIP5K1C","DNER","APOD","PPIA","CDC42BPB",
+"LRIG2","DDR1","PLXNA4","PDCD6","S1PR2")
+mat_cell_mig <- mat |> 
+  filter(row.names(mat) %in% cell_migration)
+
+#makeHeatmap function
+
+makeHeatmap <- function (selected_genes, name_of_heatm, annotation_col) {
+  hm <- pheatmap (selected_genes, 
+                  annotation_col= annotation_col,
+                  color = magma(90),
+                  annotation_colors = ann_col,
+                  annotation_names_col = T,
+                  border_color = NA,
+                  main = name_of_heatm)
+  return(hm)
+}
+
+heatmap_tgf <- makeHeatmap(mat_tgf, "TGF signalling pathway", dfx)
+heatmap_cell_mig <- makeHeatmap(mat_cell_mig, "GO cell migration", dfx)
 ```
+To-do
 
+[] create objects with genes
+[] run the heatmap function for the selected objects
