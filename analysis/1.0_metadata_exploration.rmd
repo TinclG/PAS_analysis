@@ -295,7 +295,7 @@ cluster_2_genes <- clusters$df |>
   rownames_to_column(var = "gene_id") |>
   left_join(KEY) |>
   relocate(gene_name, .after = gene_id) |>
-  filter(cluster == clust_3) |>
+  filter(cluster == clust_1) |>
   select(-genes)
 ```
 
