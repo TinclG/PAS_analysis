@@ -291,11 +291,18 @@ clusters <- degPatterns(rld3,
 clust_1 <- 1
 clust_3 <- 3
 
-cluster_2_genes <- clusters$df |>
+cluster_3_genes <- clusters$df |>
   rownames_to_column(var = "gene_id") |>
   left_join(KEY) |>
   relocate(gene_name, .after = gene_id) |>
-  filter(cluster == clust_1) |>
+  filter(cluster == clust_3) |>
+  select(-genes)
+
+cluster_1_genes <- clusters$df |>
+  rownames_to_column(var = "gene_id") |>
+  left_join(KEY) |>
+  relocate(gene_name, .after = gene_id) |>
+  filter(cluster == clust_3) |>
   select(-genes)
 ```
 
@@ -310,7 +317,7 @@ plotPCA(rld, intgroup="place", ntop=500) +
   geom_text(aes(label=name),vjust=2)
 #color on 2 levels place and PAscore
 
-#Plot the PCA using ggplot
+##Plot the PCA using ggplot
 
 #Extract PCA coordinates
 pcaData <- plotPCA(rld, 
@@ -328,6 +335,7 @@ p <- ggplot(pcaData,
   scale_color_manual(values = c("#fc8961","#b73779", "#180f3d")) +
   theme_bw()
   
+p
 ```
 ### Different visualisation
 ```{r}
