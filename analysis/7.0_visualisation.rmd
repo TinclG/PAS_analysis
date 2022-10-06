@@ -102,6 +102,7 @@ pheatmap(sampleDistMatrix,
 ## Gene clustering/heatmap with dendogram
 
 [heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
+[from pheatmap to complexheatmap](https://jokergoo.github.io/2020/05/06/translate-from-pheatmap-to-complexheatmap/)
 ```{r}
 
 #selecting 20.000 genes for the heatmap
@@ -119,24 +120,27 @@ mat <- merge(mat,
              by.y="gene_id", 
              by.x= "Ensembl")
 
-# removing the duplicated genes
+# removing the duplicated genes and ordering of the columns
+order <- c("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.6", "TG.7", "TG.9", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
 mat <- mat[!duplicated(mat$gene_name),]
 mat <- mat |>
   select(-Ensembl) |>
   remove_rownames()|>
-  column_to_rownames(var= "gene_name")
+  column_to_rownames(var= "gene_name")  |> 
+  relocate("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.6", "TG.7", "TG.9", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
 
 # selecting the cluster genes
 #cluster 1 and cluster 3
 matclust_3 <- mat |> 
-  filter(row.names(mat) %in% c(cluster_2_genes$gene_name[1:25]))
+  filter(row.names(mat) %in% c(cluster_3_genes$gene_name[1:25]))
 matclust_1 <- mat |> 
   filter(row.names(mat) %in% c(cluster_1_genes$gene_name[1:25]))
-matclust <- c(matclust_1, matclust_3)
+matclust <- bind_rows(matclust_1, matclust_3)
 # annotate the heatmap
 df <- as.data.frame(colData(rld)[,c("place", "patient")])
 df <- df |> 
-  select(place)
+  select(place) |> 
+  arrange(place)
 
 
 #col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
@@ -147,21 +151,23 @@ ann_col <- list(place = c(Ctrl = "#fd9668", PAS = "#9e2f7f", CtrlMus = "#440f76"
 
 pdf(file = file.path(params$res, "heatmap_clust.pdf"),width = 10, height = 10)
  ph3 <- pheatmap(matclust_3, 
-         annotation_col=df,
+         annotation_col = df,
          color = magma(10),
          annotation_colors = ann_col,
          annotation_names_col = T,
          border_color = NA,
-         main = "Upregulated genes in PAS")
+         cluster_cols = FALSE, 
+         main = "Upregulated in PAS")
  ph1 <- pheatmap(matclust_1, 
-         annotation_col=df,
+         annotation_col = df,
          color = magma(10),
          annotation_colors = ann_col,
          annotation_names_col = T,
          border_color = NA,
          legend = FALSE,
          main = "Downregulated genes in PAS",
-        annotation_legend = FALSE )
+         cluster_cols = FALSE,
+         annotation_legend = FALSE)
  plot_list <- list()
 plot_list[["ph1"]] <- ph1[[4]]
 plot_list[["ph3"]] <- ph3[[4]]
@@ -169,15 +175,12 @@ gridExtra::grid.arrange(grobs = plot_list, ncol =2)
    
        dev.off() 
 
- 
-plot_list <- list()
-plot_list[["ph1"]] <- ph1[[4]]
-plot_list[["ph3"]] <- ph3[[4]]
-gridExtra::grid.arrange(grobs = plot_list, ncol =2)
 ```
 [] try to plot the genes of the cluster 3
 [] you can make this for the GO results
 [] instead of place/pat you can use the GO term- add to metadata
+
+
 
 ## vulcano plots
 
@@ -216,11 +219,14 @@ results_PAS_ctrl2 <- results_PAS_ctrl2 |>
 ## Kegg anaylsis genes: TGF-beta signaling pathway
 TGF_sig <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
 
+## reactome analysis
+ECM_proteoglycans <- c("COL4A5", "SERPINE1", "COL4A1", "BGN", "TGFB2", "TNXB", "VCAN")
+
 ## R_PA analysis genes:
 #Signaling by TGFB family members
 sig_TGFB_path <- c( "CHRDL1","SERPINE1", "PMEPA1", "INHBA", "SMAD3", "FBN1", "ACVR1C", "FSTL1", "TGFB2", "FURIN", "TGIF1")
 
-results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = TGF_sig)
+results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = ECM_proteoglycans)
 ggplot(results_PAS_ctrl2, 
        aes(x = log2FoldChange, y = -log10(padj))) +
     geom_point(aes(colour = threshold_OE), size = 1) +
@@ -302,6 +308,20 @@ cell_migration <- c("ARX","FYN","HGF","WWC3","HEXB","PIK3CB","KIF2A","GPC4","B4G
 mat_cell_mig <- mat |> 
   filter(row.names(mat) %in% cell_migration)
 
+neg_reg_growth <- c("JARID2","WWC3","TGFB2","SFRP1","IGFBP5","INHBA","SH3BP4","CGA","GPC3","SMAD3","GNG4","SEMA4C","MYOZ1","SERTAD2","WT1","MT1X")
+mat_neg_reg_growth <- mat |> 
+  filter(row.names(mat) %in% neg_reg_growth)
+
+cell_matrix_adh <- c("PIK3CB","SFRP1","SERPINE1","PTK2B",
+"SDC4","PHLDB2","UTRN","SMAD3",
+"APOD","DDR1")
+mat_cell_matrix <- mat |> 
+  filter(row.names(mat) %in% cell_matrix_adh)
+
+cell_cell_adh <- c("FYN","PIK3CB","GPC4","TGFB2","XBP1","PDLIM1","ICAM2","PERP","PCDH17","SDC4","TNFSF14","CDC42EP1","PODXL","FLOT2","SWAP70","DSC2","DSC3","ANXA1","ADAM19","PCDH10","SLC7A1","RPS3","FAM49B","ROBO4","S100A11","NFASC","RET","TNXB","HAS2","LGALS9C","CEBPB","EPHB3","PIP5K1C","PPIA","TENM3")
+mat_cell_cell <- mat |> 
+  filter(row.names(mat) %in% cell_cell_adh)
+
 #makeHeatmap function
 
 makeHeatmap <- function (selected_genes, name_of_heatm, annotation_col) {
@@ -311,12 +331,17 @@ makeHeatmap <- function (selected_genes, name_of_heatm, annotation_col) {
                   annotation_colors = ann_col,
                   annotation_names_col = T,
                   border_color = NA,
+                  cluster_cols = FALSE,
+                  #cluster_rows = FALSE, #is this something that we need?
                   main = name_of_heatm)
   return(hm)
 }
 
 heatmap_tgf <- makeHeatmap(mat_tgf, "TGF signalling pathway", dfx)
 heatmap_cell_mig <- makeHeatmap(mat_cell_mig, "GO cell migration", dfx)
+heatmap_neg_reg_growth <- makeHeatmap(mat_neg_reg_growth, "GO negative regulation of growth", dfx)
+heatmap_cell_matrix <- makeHeatmap(mat_cell_matrix, "GO cell-matrix adhesion", dfx)
+heeatmap_cell_cell <- makeHeatmap(mat_cell_cell, "GO cell-cell adhesion", dfx)
 ```
 To-do
 
