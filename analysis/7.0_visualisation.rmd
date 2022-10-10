@@ -135,7 +135,7 @@ matclust_3 <- mat |>
   filter(row.names(mat) %in% c(cluster_3_genes$gene_name[1:25]))
 matclust_1 <- mat |> 
   filter(row.names(mat) %in% c(cluster_1_genes$gene_name[1:25]))
-matclust <- bind_rows(matclust_1, matclust_3)
+
 # annotate the heatmap
 df <- as.data.frame(colData(rld)[,c("place", "patient")])
 df <- df |> 
@@ -187,10 +187,6 @@ gridExtra::grid.arrange(grobs = plot_list, ncol =2)
 
 ```{r}
 
-#normalized_counts <- counts(dds, normalized=T) |>
-                     #data.frame() |>
-                     #rownames_to_column(var="gene") |>
-                     #as_tibble()
 # assigning the genes to the column 
 summary(results_PAS_ctrl, alpha = 0.05)
 
@@ -217,7 +213,7 @@ results_PAS_ctrl2 <- results_PAS_ctrl2 |>
 
 
 ## Kegg anaylsis genes: TGF-beta signaling pathway
-TGF_sig <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
+tgf <- c(	"ID4", "INHBA", "SMAD3", "PITX2", "ID1", "GDF7", "FBN1", "ACVR1C", "TGFB2", "TGIF1")
 
 ## reactome analysis
 ECM_proteoglycans <- c("COL4A5", "SERPINE1", "COL4A1", "BGN", "TGFB2", "TNXB", "VCAN")
@@ -226,21 +222,24 @@ ECM_proteoglycans <- c("COL4A5", "SERPINE1", "COL4A1", "BGN", "TGFB2", "TNXB", "
 #Signaling by TGFB family members
 sig_TGFB_path <- c( "CHRDL1","SERPINE1", "PMEPA1", "INHBA", "SMAD3", "FBN1", "ACVR1C", "FSTL1", "TGFB2", "FURIN", "TGIF1")
 
-results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = ECM_proteoglycans)
+
+# Cluster 1 genes 
+results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = row.names(matclust_1))
+
+
 ggplot(results_PAS_ctrl2, 
        aes(x = log2FoldChange, y = -log10(padj))) +
-    geom_point(aes(colour = threshold_OE), size = 1) +
+    geom_point(aes(colour = threshold_OE), size = 1, show.legend = FALSE) +
     geom_text_repel(aes(label= genelabels), max.overlaps = Inf) +
     ggtitle("PAS overexpression") +
     xlab("log2 fold change") + 
     ylab("-log10 adjusted p-value") +
-  
-    #scale_y_continuous(limits = c(0,50)) +
     theme(legend.position = "none",
-          plot.title = element_text(size = rel(1.5), hjust = 0.5),
-          axis.title = element_text(size = rel(1.25))) +
-  scale_color_manual(values= c( "#ca3e72", "#feca8d")) +
-  theme_bw()
+         plot.title = element_text(size = rel(1.5), hjust = 0.5),
+         axis.title = element_text(size = rel(1.25))) +
+    #scale_fill_discrete(guide="none")+
+    scale_color_manual(values= c( "#ca3e72", "#feca8d")) +
+    theme_classic()
 
        
 ```
@@ -322,8 +321,27 @@ cell_cell_adh <- c("FYN","PIK3CB","GPC4","TGFB2","XBP1","PDLIM1","ICAM2","PERP",
 mat_cell_cell <- mat |> 
   filter(row.names(mat) %in% cell_cell_adh)
 
-#makeHeatmap function
+##MF
+#MF involved in binding
+bind <- c("GPRC5A","SLC9A3R2","NOTCH3","COBLL1","TBC1D10A","NDRG1","PPP1R13L","PTN","PDLIM1","ICAM2","EIF4G2","ADAM23","SPTBN1","VASP","CDC42EP1","SWAP70","DSC2","ANXA1","BZW2","USO1","PHLDB2","UTRN","ROBO4","TAGLN2","S100A11","NFASC","FBN1","TNXB","BCAM","PPIA","EGFL6","TENM3","S1PR2", # cell adhesion moecule binding; cadherine binding GO:0045296, cadherin binding involved in cell-cell adhesion GO:0098641 #integrin binding GO:0005178
+          "IGFBP5","SDC4","IGFBP6", #fibronectin binding
+          "VCAN","SFRP1","STAB2","PCSK6","HDGF","FSTL1","NAV2","BGN","SULF2", #glycosaminoglycan binding GO:0005539
+          "APCDD1","FZD4", #wnt-protein binding GO:0017147
+          "DDX5","PMEPA1","SMAD3" # R-smad binding GO:0070412
+         )
+### help here please
+mat_bind <- mat |> 
+  filter(row.names(mat) %in% bind) |> 
+  arrange(bind)
+###   
 
+# MF for extra cellular matrix
+ECM <- c("VCAN","OGN","BGN")
+mat_ECM <- mat |> 
+  filter(row.names(mat) %in% ECM)
+
+
+#makeHeatmap function
 makeHeatmap <- function (selected_genes, name_of_heatm, annotation_col) {
   hm <- pheatmap (selected_genes, 
                   annotation_col= annotation_col,
@@ -332,7 +350,7 @@ makeHeatmap <- function (selected_genes, name_of_heatm, annotation_col) {
                   annotation_names_col = T,
                   border_color = NA,
                   cluster_cols = FALSE,
-                  #cluster_rows = FALSE, #is this something that we need?
+                  cluster_rows = FALSE, #is this something that we need?
                   main = name_of_heatm)
   return(hm)
 }
@@ -341,7 +359,10 @@ heatmap_tgf <- makeHeatmap(mat_tgf, "TGF signalling pathway", dfx)
 heatmap_cell_mig <- makeHeatmap(mat_cell_mig, "GO cell migration", dfx)
 heatmap_neg_reg_growth <- makeHeatmap(mat_neg_reg_growth, "GO negative regulation of growth", dfx)
 heatmap_cell_matrix <- makeHeatmap(mat_cell_matrix, "GO cell-matrix adhesion", dfx)
-heeatmap_cell_cell <- makeHeatmap(mat_cell_cell, "GO cell-cell adhesion", dfx)
+heatmap_cell_cell <- makeHeatmap(mat_cell_cell, "GO cell-cell adhesion", dfx)
+#pdf(file = file.path(params$res, "heatmap_binding.pdf"),width = 10, height = 10)
+heatmap_bind <-makeHeatmap(mat_bind, "GO binding", dfx)
+#dev.off()
 ```
 To-do
 
