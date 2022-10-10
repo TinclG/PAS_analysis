@@ -174,10 +174,6 @@ R_PA<-enrichPathway(gene = genes_entrez,
 
 PA_res <- as_tibble(R_PA@result)  
 
-PA_selected_terms <- c("Keratinization", "Diseases of glycosylation", "Signaling by TGFB family members", "ECM proteoglycans")
-
-PA_res_selected <- PA_res
-PA_res_selected$Description <- PA_res[PA_res$Description %in% PA_selected_terms,]
 
 #write.csv(PA_res, file.path(params$results, "Reactome_PAS_Ctrl_all.csv"))
 ```
@@ -277,14 +273,24 @@ cbind(head(up_tab$Genes, 5))
 ## Visualisation
 
 ```{r}
-#Bar plot
-barplot(R_PA, showCategory = 10) +
-  scale_fill_continuous(low = "#8c2981", high = "#fe9f6d")
+#Bar plot PA_R
+PA_selected_terms <- c("Keratinization", "Diseases of glycosylation", "Signaling by TGFB family members", "ECM proteoglycans")
+
+PA_res_selected <- PA_res
+PA_res_selected <- PA_res[PA_res_selected$Description %in% PA_selected_terms,]
+
+ggplot(PA_res_selected, aes(x= Count, y = reorder(Description, -p.adjust), fill = p.adjust)) +
+  geom_bar(stat = "identity", aes(-log2(qvalue))) +
+  xlab("Gene count") +
+  ylab("Description") +
+  scale_fill_continuous(low = "#8c2981", high = "#fe9f6d") +
+  theme_bw()
+  
 
 
 mutate(R_PA, qscore = -log(p.adjust, base = 10)) |>
     barplot(x="qscore")
-#[]change colors
+
 #Dot plot 
 dotplot(R_PA, showCategory=30) + 
   ggtitle("dotplot for ORA") +
