@@ -39,7 +39,7 @@ library(enrichplot)
 
 # (1) subtraction/subset of the genes from clusters 
 
-#*cluster_4_genes
+#*cluster_3_genes
 
 # (2) list of gene IDs from result_PAS_ctrl and results_MusCtrl_Ctrl
 
@@ -54,9 +54,10 @@ library(enrichplot)
 
 ```{r}
 #Merging the df cluster_3_genes with gene_ids
-c2 <- merge(as.data.frame(cluster_2_genes), 
-                 KEY, 
-                 by="gene_id")
+#c2 <- merge(as.data.frame(cluster_3_genes), 
+ #                KEY, 
+  #               by="gene_id")
+## might not be needed anymore
 
 residual <- results_mus_ctrl |>
   subset(padj < 0.05) |>
