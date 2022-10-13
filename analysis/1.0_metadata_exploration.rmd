@@ -131,7 +131,7 @@ Variables: weight,
 ```{r}
 dds<-DESeqDataSetFromMatrix(countData = PAS,
                             colData = anno |> column_to_rownames(var = "seq_ID"),
-                            design = ~ Grav + Para + Csec + place)
+                            design = ~ Grav + Para + Csec + place + GWscaled)
 
 #prefiltering- removing rows with few reads
 keep<-rowSums(counts(dds)) >=10
@@ -199,7 +199,7 @@ results_mus_ctrl<- results_mus_ctrl |>
 results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "CtrlMus"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
 results_mus_PAS<- results_mus_PAS |> 
-  subset(padj < 0.05)
+  subset(padj < 0.05) ## set alpha into 0.05 before 
 ```
 
 
@@ -302,7 +302,7 @@ cluster_1_genes <- clusters$df |>
   rownames_to_column(var = "gene_id") |>
   left_join(KEY) |>
   relocate(gene_name, .after = gene_id) |>
-  filter(cluster == clust_3) |>
+  filter(cluster == clust_1) |>
   select(-genes)
 ```
 
