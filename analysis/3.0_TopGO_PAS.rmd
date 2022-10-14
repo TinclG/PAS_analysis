@@ -57,6 +57,7 @@ The input should be a named vector of DEG genes. Used is ENS_sig object created 
 
 ```{r puting the genes as named vector}
 
+# residual genes
 residual <- results_mus_ctrl |>
   subset(padj < 0.05) |>
   rownames_to_column(var = "gene_id") |>
@@ -251,7 +252,7 @@ upRes <- runTest(upGOdata,
                  statistic = statistic)
 
 # Build up result table
-up_tab <- GenTable(upGOdata, Pval = upRes, topNodes = 20)
+up_tab <- GenTable(upGOdata, Pval = upRes, topNodes = 60)
 
 # Update table with full GO term name
 # Update up table 
@@ -268,6 +269,8 @@ up_SigList <- lapply(up_AnnoList, function(x) intersect(x, up_sigGenes))
 up_tab$Genes <- sapply(up_SigList, paste, collapse = ",")
 # Cbind first 5 up 
 cbind(head(up_tab$Genes, 5))
+#write.csv(data.frame(up_tab), file.path(params$results, "Res_BP2.csv"))
+#[]create more nods for BP
 ```
 
 ## Visualisation
@@ -286,25 +289,35 @@ ggplot(PA_res_selected, aes(x= Count, y = reorder(Description, -p.adjust), fill 
   scale_fill_continuous(low = "#8c2981", high = "#fe9f6d") +
   theme_bw()
   
-
-
-mutate(R_PA, qscore = -log(p.adjust, base = 10)) |>
-    barplot(x="qscore")
-
 #Dot plot 
 dotplot(R_PA, showCategory=30) + 
   ggtitle("dotplot for ORA") +
   scale_fill_continuous(low = "#8c2981", high = "#fe9f6d")
+```
 
+## Selecting GO terms and visualization
+```{r}
 #dotplot GO
+#up_tab <- Res[2]
 up_tab$Pval <- as.numeric(up_tab$Pval)
 up_tab <- up_tab[up_tab$Pval < 0.05,]
 up_tab <- up_tab[,c("GO.ID","Term","Pval")]
-up_tab
 
-ntop <- 20
-ggdata <- up_tab[1:ntop,]
-ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
+## Molecular function 
+MF <- up_tab
+MF_terms <- c("calcium ion binding", "glycosaminoglycan binding", "cadherin binding involved in cell-cell adhesion", "integrin binding", "extracellular matrix structural constituent conferring compression resistance", "cadherin binding","	Wnt-protein binding", "cell-cell adhesion mediator activity", "cell adhesion molecule binding", "fibronectin binding")
+ntop <- 63
+ggdata <- MF[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) 
+ggdata <- ggdata[ggdata$Term %in% MF_terms,] 
+
+## Biological processes
+BP <- up_tab
+BP_terms <- c("negative regulation of cell population proliferation", "vascular wound healing", "angiogenesis involved in wound healing", "angiogenesis", "negative regulation of growth", "cell migration", "cell-cell junction organization", "connective tissue development", "smooth muscle cell migration", "positive regulation of smooth muscle cell migration", "negative regulation of wound healing", "regulation of extracellular matrix assembly")
+ggdata <- BP[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) 
+ggdata <- ggdata[ggdata$Term %in% BP_terms,] 
+#pdf(file = file.path(params$res, "GO_MF.pdf"),width = 10, height = 7)
 ggplot(ggdata,
   aes(x = Term, y = -log10(Pval), size = -log10(Pval), fill = -log10(Pval))) +
 
@@ -347,7 +360,7 @@ ggplot(ggdata,
     title = element_text(size = 14, face = "bold")) +
 
   coord_flip()
-
+#dev.off()
 ```
 
 To do:
