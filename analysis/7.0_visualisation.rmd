@@ -224,12 +224,12 @@ sig_TGFB_path <- c( "CHRDL1","SERPINE1", "PMEPA1", "INHBA", "SMAD3", "FBN1", "AC
 
 
 # Cluster 1 genes 
-results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = row.names(matclust_1))
+results_PAS_ctrl2$genelabels <- factor(results_PAS_ctrl2$gene_name, levels = sig_TGFB_path) #row.names(matclust_1))
 
-
+pdf(file = file.path(params$res, "vulcano_tgfb.pdf"),width = 6, height = 5)
 ggplot(results_PAS_ctrl2, 
        aes(x = log2FoldChange, y = -log10(padj))) +
-    geom_point(aes(colour = threshold_OE), size = 1, show.legend = FALSE) +
+    geom_point(aes(colour = threshold_OE), size = 0.3, show.legend = FALSE) +
     geom_text_repel(aes(label= genelabels), max.overlaps = Inf) +
     ggtitle("PAS overexpression") +
     xlab("log2 fold change") + 
@@ -240,7 +240,8 @@ ggplot(results_PAS_ctrl2,
     #scale_fill_discrete(guide="none")+
     scale_color_manual(values= c( "#ca3e72", "#feca8d")) +
     theme_classic()
-
+dev.off()
+#[]adjust to maybe just top 10 DEG in clust 1 and 3
        
 ```
 [] label just the most interesting genes
@@ -356,7 +357,9 @@ makeHeatmap <- function (selected_genes, name_of_heatm, annotation_col) {
 }
 
 heatmap_tgf <- makeHeatmap(mat_tgf, "TGF signalling pathway", dfx)
+pdf(file = file.path(params$res, "heatmap_cell_mig.pdf"),width = 10, height = 10)
 heatmap_cell_mig <- makeHeatmap(mat_cell_mig, "GO cell migration", dfx)
+dev.off()
 heatmap_neg_reg_growth <- makeHeatmap(mat_neg_reg_growth, "GO negative regulation of growth", dfx)
 heatmap_cell_matrix <- makeHeatmap(mat_cell_matrix, "GO cell-matrix adhesion", dfx)
 heatmap_cell_cell <- makeHeatmap(mat_cell_cell, "GO cell-cell adhesion", dfx)
