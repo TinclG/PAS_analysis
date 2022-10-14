@@ -85,7 +85,7 @@ quantlog <-  quantlog |>
   remove_rownames()|>
   column_to_rownames(var ="gene_name")
 
-form <- ~( Grav + Para + Csec+ place) #which one is categorical, fixed or continuous
+form <- ~( Grav + Para + Csec+ place + GWscaled) #which one is categorical, fixed or continuous
 #uses rld table results for input
 varPart_pas <- fitExtractVarPartModel(quantlog,form, anno) #problem
 plotVarPart(varPart_pas)
