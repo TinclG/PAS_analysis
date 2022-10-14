@@ -165,7 +165,9 @@ results_PAS_ctrl <-results(dds,
                            filterFun = ihw, 
                            name="place_PAS_vs_Ctrl",
                            contrast = c("place", "PAS", "Ctrl"))
-# what about the log for shrinkage? 
+                        
+
+
 results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
 results_PAS_ctrl <-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
 sig.res <- results_PAS_ctrl|>  
@@ -189,17 +191,19 @@ results_mus_ctrl<-results(dds,
 results_mus_ctrl<- as.data.frame(results_mus_ctrl)
 results_mus_ctrl <-results_mus_ctrl[order(results_mus_ctrl$padj),]
 results_mus_ctrl<- results_mus_ctrl |> 
-  subset(padj < 0.05) 
+ subset(padj < 0.05) 
 ```
 
 ## pas vs mus
 
 ```{r}
 
-results_mus_PAS<-results(dds, filterFun= ihw, contrast = c("place", "PAS", "CtrlMus"))
+results_mus_PAS<-results(dds, 
+                         filterFun= ihw, 
+                         contrast = c("place", "PAS", "CtrlMus"))
 results_mus_PAS<- as.data.frame(results_mus_PAS)
 results_mus_PAS<- results_mus_PAS |> 
-  subset(padj < 0.05) ## set alpha into 0.05 before 
+ subset(padj < 0.05) ## set alpha into 0.05 before 
 ```
 
 
@@ -207,7 +211,7 @@ results_mus_PAS<- results_mus_PAS |>
 ```{r}
 #Merging the df into ENS_sig (between PAS and ctrl)
 #[]residual must be the same as ens bg
-ENS_sig <- merge(as.data.frame(sig.res), 
+ENS_sig <- merge(as.data.frame(results_PAS_ctrl), 
                  KEY, 
                  by.y="gene_id", 
                  by.x= "row.names") # have some kind of conversion key dataframe- at the very begining just take the gene id and symbols into df, appent this - so that you dont have the counts.
