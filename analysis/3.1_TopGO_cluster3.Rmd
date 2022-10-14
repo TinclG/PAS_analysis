@@ -73,10 +73,10 @@ all_genes <- PAS_ctrl |>
 
 #Extracting the gene_names from cluster_3_genes
 
-genes <- c2 |>
-  pull(gene_name.x)
+genes <- cluster_3_genes |>
+  pull(gene_name)
 
-Genes <- c2 |>
+Genes <- cluster_3_genes |>
   pull(gene_id)
 
 
@@ -107,10 +107,10 @@ plot the counts with the different factors
  
  
 ```{r ENTREZ}
-ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(c2$gene_id),
+ensembl_to_entrez <- AnnotationDbi::select(org.Hs.eg.db, unique(cluster_3_genes$gene_id),
                                            keytype = "ENSEMBL",
                                            columns = c("ENTREZID"))
-c2 <- c2 |> inner_join(ensembl_to_entrez, by = c("gene_id" = "ENSEMBL"))
+cluster_3_genes <- cluster_3_genes |> inner_join(ensembl_to_entrez, by = c("gene_id" = "ENSEMBL"))
 #c2$ENTREZID <- mapIds(org.Hs.eg.db,
                        #keys=c2$genes, 
                         #column="ENTREZID",
@@ -118,7 +118,7 @@ c2 <- c2 |> inner_join(ensembl_to_entrez, by = c("gene_id" = "ENSEMBL"))
                         #multiVals="first")
 
 universe <- unique(PAS_ctrl$ENTREZID)
-genes <- c2 |>
+genes <- cluster_3_genes |>
   pull(ENTREZID) |> 
   unique()
 ```
