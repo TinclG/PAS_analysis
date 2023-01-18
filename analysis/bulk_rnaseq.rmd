@@ -1,0 +1,698 @@
+---
+title: "bulk_RNAseq"
+author: "Tina Gorsek Sparovec"
+
+params:
+ data: "../data"
+ results: "../res"
+ lib: "../lib"
+ rds: "../rds"
+ maxcores: 6
+output:
+ html_notebook:
+ theme: spacelab
+ highlight: textmate
+ toc: yes
+ number_sections: true
+ toc_depth: 3
+ toc_float: true
+---
+##prerequisits
+```{r}
+path2data <- ((params$data,"/metadata_PASeq2.csv"), sep= ";")
+
+path2count <- (params$data, "/PAS_counts.tsv")
+```
+
+
+
+
+```{r}
+library(DESeq2)
+library(tidyverse)
+library(readr)
+library(IHW)
+library(pcaExplorer)
+library(clusterProfiler)
+library(ReactomePA)
+library(DEGreport)
+library(cowplot)
+library(conflicted)
+library(tidyverse)
+require(org.Hs.eg.db)
+library(janitor)
+library(topGO)
+library(DOSE)
+library(enrichplot)
+library(hgu95av2.db)
+library(pasilla)
+library(pheatmap)
+library(genefilter)
+library(RColorBrewer)
+library(vsn)
+library(ggrepel)
+library(ggnewscale)
+library(viridisLite)
+library(viridis)
+library(VennDiagram)
+
+conflict_prefer("rowVars", "genefilter")
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+```
+
+
+#Metadata wrangling 
+
+```{r}
+anno <- read.csv2(paste0(path2data)
+
+anno <- anno |>
+  filter(seq_ID != "AK19_TG.5") |> 
+  filter(seq_ID != "AK19_TG.8") |>
+  filter(seq_ID != "AK19_TG.11") |> #removing an outlier 
+  mutate(seq_ID = gsub("AK19_", "", seq_ID)) |> #renaming the seq_ID
+  relocate(c("place", "seq_ID", "patient", "GW", "sectio", "GDM", "Grav", "Para", "weight", "Csec", "PA_score", "Placenta_previa")) |>
+  #change column order/ select columns
+  mutate_at(vars(-c("seq_ID", "week", "day", "GW", "weight")), factor) |> 
+  #assigning all except the mentioned in factors
+  mutate(sectio = recode_factor(sectio,
+                                "Prim. Sectio"= "1sec", 
+                                "Prim. sectio"= "1sec", 
+                                "Sek. Sectio"= "2sec")) |>
+  #changing the variables into factors
+  mutate(place = recode_factor(place,
+                               "control"= "Ctrl", 
+                               "control_mus"= "CtrlMus", 
+                               "PAS"= "PAS" )) |>
+  mutate(place = fct_relevel(place, c("Ctrl", "PAS", "CtrlMus"))) 
+  
+  
+# If you have to mutate all columns- use mutate_all(factor)
+
+head(anno)
+
+
+# Add scaled covariated to metadata
+anno$GWscaled<-scale(anno$GW, center=TRUE)
+anno$SWeight<-scale(anno$weight, center = TRUE)
+
+# Transforming the continuous variables into factors by cutting them (should make biological sense)
+anno$cutGW <- cut(anno$GW, 
+                  c(0, 196, 224, 259, Inf), 
+                  c("<28","28-32", "32-37", ">38"), 
+                  include.lowest = TRUE)
+###cutting the GW on extremely preterm < 28 weeks, Preterm 28-32, Moderate to Late preterm 32-37, Normal 38-42
+
+
+anno$cutWeight <- cut(anno$weight, 
+                      c(0, 1500, 2500, 4200, Inf), 
+                      c("VLBW", "LBW", "NBW", "LGW"), 
+                      include.lowest = TRUE)
+###cutting the Weight in very low birth weight (VLBW) <1500, low birth weight (LBW) <2500, Normal birth weight (NBW) 2500- 4200, Large for gastational weight > 4200g
+
+#saveRDS(anno, file = file.path(params$rds, "anno_noout.rds"))
+```
+
+#Reading in the count table
+
+```{r}
+PAS<-read_tsv(paste0(path2count)
+
+#Object with gene_id and gene_names
+KEY <- PAS |>
+  select(-c(AK19_TG.5, AK19_TG.8, AK19_TG.11)) |>
+  select(gene_id, gene_name) |>
+  mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id))
+
+#data wrangling
+PAS <- PAS |> 
+  select(-c(AK19_TG.5, AK19_TG.8, AK19_TG.11)) |>
+  mutate(gene_id = gsub("\\.[1-9]*$", "", gene_id)) |> 
+  select(-gene_name) |>
+  mutate_at(vars(-("gene_id")), ceiling) |> #rounding the counts
+  rename_with(~str_replace(., pattern = "AK19_", replacement = "")) |>
+  column_to_rownames(var = "gene_id") 
+
+
+#saveRDS(PAS, file = file.path(params$rds,"PAS_noout.rds"))
+```
+
+#DESeq and DE analysis
+
+```{r}
+dds<-DESeqDataSetFromMatrix(countData = PAS,
+                            colData = anno |> column_to_rownames(var = "seq_ID"),
+                            design = ~ Grav + Para + Csec + place + GWscaled)
+
+#prefiltering- removing rows with few reads
+keep<-rowSums(counts(dds)) >=10
+dds<-dds[keep,]
+
+#saveRDS(dds, file = file.path(params$rds, "dds_mixeddesign_noout.rds"))
+
+data <- plotCounts(dds, gene= "ENSG00000000003",
+           intgroup = "place",
+           returnData = TRUE)
+ggplot(data, aes(x = place, y= count))+
+  geom_point(aes(fill=place))
+
+
+dds$place<-factor(dds$place, 
+                  levels= c("Ctrl", "CtrlMus", "PAS"))
+dds <- DESeq(dds)  
+```
+
+##Define the contrasts
+
+```{r}
+
+results_PAS_ctrl <-results(dds, 
+                           filterFun = ihw, 
+                           name="place_PAS_vs_Ctrl",
+                           contrast = c("place", "PAS", "Ctrl"))
+                        
+
+
+results_PAS_ctrl <- as.data.frame(results_PAS_ctrl)
+results_PAS_ctrl <-results_PAS_ctrl[order(results_PAS_ctrl$padj),]
+sig.res <- results_PAS_ctrl|>  
+  subset(padj<0.05)
+
+results_mus_ctrl<-results(dds, 
+                          filterFun= ihw, 
+                          contrast = c("place", "CtrlMus", "Ctrl")) # reference level comes last!
+results_mus_ctrl<- as.data.frame(results_mus_ctrl)
+results_mus_ctrl <-results_mus_ctrl[order(results_mus_ctrl$padj),]
+results_mus_ctrl<- results_mus_ctrl |> 
+ subset(padj < 0.05)
+
+ results_mus_PAS<-results(dds, 
+                         filterFun= ihw, 
+                         contrast = c("place", "PAS", "CtrlMus"))
+results_mus_PAS<- as.data.frame(results_mus_PAS)
+results_mus_PAS<- results_mus_PAS |> 
+ subset(padj < 0.05)   
+```
+
+##Adding ENS symbols to the df
+
+```{r}
+#Merging the df into ENS_sig (between PAS and ctrl)
+ENS_sig <- merge(as.data.frame(results_PAS_ctrl), 
+                 KEY, 
+                 by.y="gene_id", 
+                 by.x= "row.names") # have some kind of conversion key dataframe- at the very begining just take the gene id and symbols into df, appent this - so that you dont have the counts.
+
+ENS_bg <- merge(as.data.frame(results_mus_ctrl), 
+                KEY, 
+                by.y="gene_id", 
+                by.x= "row.names")
+ENS_bg <- ENS_bg |> 
+   subset(padj < 0.05) 
+
+#excluding the rows from the ENS_sig, that appear in the ENS_bg and ENS_sig
+ENS_sig_all <- ENS_sig |> 
+   subset(padj < 0.05) |>
+  pull(gene_name)
+
+ENS_sig_names <- ENS_sig |>
+  subset(!ENS_sig$Row.names %in% ENS_bg$Row.names) |> 
+  pull(gene_name)
+```
+
+#nCount data transformation
+
+```{r}
+
+# Extracting transformed values
+vst <- vst(dds, blind=FALSE)
+rld <- rlog(dds, blind=FALSE)
+head(assay(rld), 3)
+rld_df <- as.matrix(assay(rld))
+fpm <- fpm(dds)
+
+## Results of each transformation plotted 
+plot_layout <- function(df, x, y, title) {
+  ggplot(df, aes_string(x = x, y = y)) + 
+    geom_point(size = 0.2) +
+    ggtitle(title)
+}
+plot <- plot_grid(plot_layout(as_tibble(log2(1 + counts(dds, normalized =T))), "TG.10", "TG.12", "log2"),
+                  plot_layout(as_tibble(assay(rld)), "TG.10", "TG.12", "rld"),
+                  plot_layout(as_tibble(assay(vst)), "TG.10", "TG.12", "vst"),
+                  plot_layout(as_tibble(log2(fpm)), "TG.10", "TG.12", "fpm"))
+plot(plot)
+```
+
+##Plot PCA 
+
+Comment on the PCA = PA_score needs to be adjusted, CtrlMus uses the PA_Score from the patients with PAS, however it is just a control. 
+
+```{r}
+
+#Extract PCA coordinates
+pcaData <- plotPCA(rld, 
+                   intgroup = c("place", "PA_score"), 
+                   returnData = TRUE)
+
+percentVar <- round(100 * attr(pcaData, "percentVar"), digits = 1)
+
+p <- ggplot(pcaData, 
+            aes(x = PC1, y = PC2, color = place)) +
+  geom_point(aes(fill = place), size=3) +
+  xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+  ggtitle("PCA") +
+  scale_color_manual(values = c("#fc8961","#b73779", "#180f3d")) +
+  theme_bw()
+  
+p
+```
+
+
+#Clustering the genes
+
+Aim: To identify gene clusters exhibiting particular patterns
+
+```{r}
+
+#degPatterns using rld results
+
+rld2 <-rld[rownames(rld) %in% rownames(results_PAS_ctrl|> subset(padj < 0.05))]
+rld3 <- as_tibble(assay(rld2[rownames(rld2) %in% rownames(results_PAS_ctrl|> subset(padj < 0.05))])) |>
+  mutate(id = rownames(rld2)) |>
+  column_to_rownames(var = "id")
+
+clusters <- degPatterns(rld3, 
+                        metadata = anno |> 
+                          column_to_rownames(var = "seq_ID"),
+                        time = "place", 
+                        col = NULL)
+
+##Extracting the genes from the cluster
+#clust_1 <- 1
+clust_3 <- 3
+
+cluster_genes <- clusters$df |>
+  rownames_to_column(var = "gene_id") |>
+  left_join(KEY) |>
+  relocate(gene_name, .after = gene_id) |>
+  filter(cluster == clust_3) |>
+  select(-genes)
+```
+
+####################################################################################
+
+# TopGO functional analysis
+
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.515.8324&rep=rep1&type=pdf
+
+```{r puting the genes as named vector}
+
+# residual genes
+residual <- results_mus_ctrl |>
+  subset(padj < 0.05) |>
+  rownames_to_column(var = "gene_id") |>
+  pull(gene_id)
+
+PAS_ctrl <- results_PAS_ctrl |>
+  rownames_to_column(var = "gene_id")|>
+  subset(!gene_id %in% residual)
+
+genes <- PAS_ctrl |> 
+  subset(padj < 0.05) |> 
+  pull(gene_id)
+
+
+up_genes <- PAS_ctrl |>
+  subset(padj < 0.05 & PAS_ctrl$log2FoldChange > 0) |>
+  pull(gene_id)
+
+dn_genes <- PAS_ctrl |>
+  subset(padj < 0.05 & PAS_ctrl$log2FoldChange < 0) |>
+  pull(gene_id)
+
+#Extracting the all genes
+
+all_genes <- PAS_ctrl |>
+  pull(gene_id)
+
+
+#all genes expressed as a background
+all_genes_names <- names(keep)
+
+```
+
+## topGotable on Biological pathways ("BF") and Molecular function ("MF")
+
+Extract functional terms enriched in the DE genes, based on topGO
+
+```{r}
+ 
+Res <- lapply(c("BP", "MF"), function(ontology) {
+  topgode <- topGOtable(DEgenes = genes,
+                        BGgenes = all_genes,
+                        ontology = ontology,
+                        mapping = "org.Hs.eg.db",
+                        geneID= "ENSEMBL"
+                        )
+  })
+
+
+Res
+#write.csv(data.frame(Res[1]), file.path(params$results, "Res_BP.csv"))
+#write.csv(data.frame(Res[2]), file.path(params$results, "Res_MF.csv"))
+```
+
+## Adding a column with ENTREZ ID 
+ 
+```{r ENTREZ}
+PAS_ctrl$ENTREZID <- mapIds(org.Hs.eg.db,
+                       keys=PAS_ctrl$gene_id, 
+                        column="ENTREZID",
+                        keytype="ENSEMBL",
+                        multiVals="first")
+
+universe <- unique(PAS_ctrl$ENTREZID)
+genes_entrez <- PAS_ctrl |>
+  subset(padj < 0.05) |> 
+  pull(ENTREZID) |> 
+  unique()
+```
+## KEEGG pathway over-representation analasis
+ 
+[Biomedical knowledge mining using GOSemSim and clusterProfiler](https://yulab-smu.top/biomedical-knowledge-mining-book/clusterprofiler-kegg.html)
+
+KEGG is a collection of manually drawn pathway maps representing molecular interaction and reaction networks. These pathways cover a wide range of biochemical processes that can be divided into 7 broad categories.
+
+Over Representation Analysis (ORA) (Boyle et al. 2004) is a widely used approach to determine whether known biological functions or processes are over-represented (= enriched) in an experimentally-derived gene list, e.g. a list of differentially expressed genes (DEGs).
+
+```{r}
+
+Kegg <- enrichKEGG(gene = genes_entrez,
+                   organism = 'hsa',
+                   universe = universe,
+                   pvalueCutoff = 0.05)
+head(Kegg)
+Kegg <- setReadable(Kegg, org.Hs.eg.db, keyType = "ENTREZID")
+
+#write.csv(Kegg, file.path(params$results, "Kegg_PAS_Ctrl_all.csv"))
+
+```
+
+## Reactome enrich analysis
+
+Reactome uses hypergeometric model (one sided version of Fishers exact test) to asses whether the number of selected genes associated with a reactome pathway is larger then expected. 
+
+```{r reactome}
+R_PA<-enrichPathway(gene = genes_entrez, 
+                    organism = "human",
+                    universe = universe,
+                    pvalueCutoff = 0.05, #had to change the pvaluecutoff  to 0.2because there was nothing to plot
+                    readable = T)
+
+PA_res <- as_tibble(R_PA@result)  
+
+
+#write.csv(PA_res, file.path(params$results, "Reactome_PAS_Ctrl_all.csv"))
+
+````
+
+## Wiki pathway
+
+WikiPathways is a continuously updated pathway database curated by a community of researchers and pathway enthusiasts. WikiPathways produces monthly releases of gmt files for supported organisms at data.wikipathways.org
+
+```{r}
+Wiki_pathway <- enrichWP(gene = genes_entrez, 
+                         universe = universe,
+                         organism = "Homo sapiens",
+                         pvalueCutoff = 0.05)
+
+
+#adding the ENTREZID as geneID
+Wiki_pathway <- setReadable(Wiki_pathway, org.Hs.eg.db, keyType = "ENTREZID")
+Wiki_pathway <- as_tibble(Wiki_pathway@result)
+
+```
+
+## Finer control of GO term tests
+
+Algorithms:
+-ELIM - The elim method was design to be more conservative then the
+classic method and therefore one expects the p-values returned by the former method 
+are lower bounded by the p-values returned by the later method.
+
+```{r}
+ontology <- "BP" #(Biological Pathway)
+#ontology <- "CC" #(Cellular Component)
+#ontology <- "MF" #(Molecular Function)
+
+# Decide test algorithm
+algorithm <- "weight01"
+#algorithm <- "classic"
+#algorithm <- "elim"
+#algorithm <- "weight"
+#algorithm <- "lea"
+#algorithm <- "parentchild"
+
+# Define the statistical test used
+# For tests based on gene counts
+statistic <- "fisher"      # Fischer's exact test
+
+#For tests based on gene scores or gene ranks
+#statistic <- "ks"         # Kolmogorov-Smirnov test
+#statistic <- "t"          # t-test
+
+# For tests based on gene expression
+#statistic <- "globaltest" # globaltest
+
+# A list of up-regulated genes
+# dn_genes
+# up_genes
+upList <- factor(as.integer(all_genes %in% genes))
+names(upList) <- all_genes
+
+upGOdata <- new("topGOdata", 
+                ontology = ontology, 
+                allGenes = upList, 
+                geneSel = function(x)(x == 1), 
+                nodeSize = 10, 
+                annot = annFUN.org, 
+                mapping = "org.Hs.eg.db", 
+                ID = "ENSEMBL")
+
+
+upRes <- runTest(upGOdata, 
+                 algorithm = algorithm, 
+                 statistic = statistic)
+
+# Build up result table
+up_tab <- GenTable(upGOdata, Pval = upRes, topNodes = 60)
+
+# Update table with full GO term name
+# Update up table 
+up_tab$Term <- sapply(up_tab$"GO.ID", 
+                      function(go) Term(GO.db::GOTERM[[go]]))
+up_sigGenes <- sigGenes(upGOdata)
+
+# Retrieve gene symbols for each GO from the test result
+up_AnnoList <- lapply(up_tab$"GO.ID", 
+                      function(x) as.character(unlist(genesInTerm(object = upGOdata, whichGO = x))))
+up_SigList <- lapply(up_AnnoList, function(x) intersect(x, up_sigGenes))
+
+#Coerce gene list to a comma-separated vector
+up_tab$Genes <- sapply(up_SigList, paste, collapse = ",")
+# Cbind first 5 up 
+cbind(head(up_tab$Genes, 5))
+#write.csv(data.frame(up_tab), file.path(params$results, "Res_BP2.csv"))
+```
+
+## GO Visualisation
+
+
+```{r}
+#Bar plot PA_R
+PA_selected_terms <- c("Keratinization", "Diseases of glycosylation", "Signaling by TGFB family members", "ECM proteoglycans")
+
+PA_res_selected <- PA_res
+PA_res_selected <- PA_res[PA_res_selected$Description %in% PA_selected_terms,]
+
+ggplot(PA_res_selected, aes(x= Count, y = reorder(Description, -p.adjust), fill = p.adjust)) +
+  geom_bar(stat = "identity", aes(-log2(qvalue))) +
+  xlab("Gene count") +
+  ylab("Description") +
+  scale_fill_continuous(low = "#8c2981", high = "#fe9f6d") +
+  theme_bw()
+  
+#Dot plot 
+dotplot(R_PA, showCategory=30) + 
+  ggtitle("dotplot for ORA") +
+  scale_fill_continuous(low = "#8c2981", high = "#fe9f6d")
+```
+
+## Selecting GO terms and visualization
+```{r}
+#dotplot GO
+#up_tab <- Res[2]
+up_tab$Pval <- as.numeric(up_tab$Pval)
+up_tab <- up_tab[up_tab$Pval < 0.05,]
+up_tab <- up_tab[,c("GO.ID","Term","Pval")]
+
+## Molecular function 
+MF <- up_tab
+MF_terms <- c("calcium ion binding", "glycosaminoglycan binding", "cadherin binding involved in cell-cell adhesion", "integrin binding", "extracellular matrix structural constituent conferring compression resistance", "cadherin binding","	Wnt-protein binding", "cell-cell adhesion mediator activity", "cell adhesion molecule binding", "fibronectin binding")
+ntop <- 63
+ggdata <- MF[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) 
+ggdata <- ggdata[ggdata$Term %in% MF_terms,] 
+
+## Biological processes
+BP <- up_tab
+BP_terms <- c("negative regulation of cell population proliferation", "vascular wound healing", "angiogenesis involved in wound healing", "angiogenesis", "negative regulation of growth", "cell migration", "cell-cell junction organization", "connective tissue development", "smooth muscle cell migration", "positive regulation of smooth muscle cell migration", "negative regulation of wound healing", "regulation of extracellular matrix assembly")
+ggdata <- BP[1:ntop,]
+ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) 
+ggdata <- ggdata[ggdata$Term %in% BP_terms,] 
+#pdf(file = file.path(params$res, "GO_MF.pdf"),width = 10, height = 7)
+ggplot(ggdata,
+  aes(x = Term, y = -log10(Pval), size = -log10(Pval), fill = -log10(Pval))) +
+
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = "#8c2981", high = "#fe9f6d") +
+
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO MF analysis') +
+    #subtitle = 'Top 50 terms ordered by Kolmogorov-Smirnov p-value',
+    #subtitle = 'Top 20 terms ordered by Fisher Exact p-value',
+    #caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+
+  coord_flip()
+#dev.off()
+
+```
+
+# Visualisation
+
+## Venns diagram of genes
+```{r}
+#results_mus_ctrl 
+#results_mus_PAS
+#results_PAS_ctrl
+PAS_ven <- rownames(sig.res)
+MUS_ven <- rownames(results_mus_PAS)
+ctrl_ven <-rownames(results_mus_ctrl)
+pdf(file = file.path(params$res,"venn_diagram.pdf"))
+venn.plot <- venn.diagram(list(PAS_ven, ctrl_ven, MUS_ven), filename = NULL,
+                          category = c("PAS", "ctrl", "MUS"))
+                                
+grid.draw(venn.plot)
+dev.off()
+```
+
+## Gene clustering/heatmap with dendogram
+
+[heatmap](http://bioconductor.org/help/course-materials/2015/BioC2015/bioc2015rnaseq.html)
+[from pheatmap to complexheatmap](https://jokergoo.github.io/2020/05/06/translate-from-pheatmap-to-complexheatmap/)
+```{r}
+
+#selecting 20.000 genes for the heatmap
+topVarGenes <- head(order(-rowVars(assay(rld))), 20000) 
+
+mat <- assay(rld)[ topVarGenes, ]
+mat <- mat - rowMeans(mat)
+mat <- mat |>
+  as.data.frame() |>
+  rownames_to_column(var= "Ensembl")
+
+# merging with KEY to get the gene_name 
+mat <- merge(mat,
+             KEY, 
+             by.y="gene_id", 
+             by.x= "Ensembl")
+
+# removing the duplicated genes and ordering of the columns
+order <- c("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.6", "TG.7", "TG.9", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
+mat <- mat[!duplicated(mat$gene_name),]
+mat <- mat |>
+  select(-Ensembl) |>
+  remove_rownames()|>
+  column_to_rownames(var= "gene_name")  |> 
+  relocate("TG.1", "TG.10", "TG.2", "TG.3", "TG.4", "TG.6", "TG.7", "TG.9", "TG.12", "TG.14", "TG.15", "TG.17", "TG.18", "TG.20", "TG.21", "TG.13", "TG.16", "TG.19")
+
+# selecting the cluster genes
+#cluster 1 and cluster 3
+matclust_3 <- mat |> 
+  filter(row.names(mat) %in% c(cluster_3_genes$gene_name[1:25]))
+matclust_1 <- mat |> 
+  filter(row.names(mat) %in% c(cluster_1_genes$gene_name[1:25]))
+
+# annotate the heatmap
+df <- as.data.frame(colData(rld)[,c("place", "patient")])
+df <- df |> 
+  select(place) |> 
+  arrange(place)
+
+
+#col <- colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))
+#pat_col <-natparks.pals("Arches2", 15)
+#names(pat_col)<-levels(df$patient)
+
+ann_col <- list(place = c(Ctrl = "#fd9668", PAS = "#9e2f7f", CtrlMus = "#440f76"))
+
+#pdf(file = file.path(params$res, "heatmap_clust.pdf"),width = 10, height = 10)
+ ph3 <- pheatmap(matclust_3, 
+         annotation_col = df,
+         color = magma(10),
+         annotation_colors = ann_col,
+         annotation_names_col = T,
+         border_color = NA,
+         cluster_cols = FALSE, 
+         main = "Upregulated in PAS")
+ ph1 <- pheatmap(matclust_1, 
+         annotation_col = df,
+         color = magma(10),
+         annotation_colors = ann_col,
+         annotation_names_col = T,
+         border_color = NA,
+         legend = FALSE,
+         main = "Downregulated genes in PAS",
+         cluster_cols = FALSE,
+         annotation_legend = FALSE)
+ plot_list <- list()
+plot_list[["ph1"]] <- ph1[[4]]
+plot_list[["ph3"]] <- ph3[[4]]
+gridExtra::grid.arrange(grobs = plot_list, ncol =2)
+   
+       #dev.off() 
+
+```
+
